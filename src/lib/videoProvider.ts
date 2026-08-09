@@ -109,8 +109,11 @@ export class R2VideoProvider implements VideoProvider {
   }
 
   async getProcessingStatus(key: string): Promise<VideoProcessingStatus> {
-    // Nothing processes the file, so anything that has a key is playable.
-    return { state: key ? "ready" : "pending", percent: 100 };
+    // Nothing processes the file, so anything that has a key is playable and
+    // anything without one has not started.
+    return key
+      ? { state: "ready", percent: 100 }
+      : { state: "pending", percent: 0 };
   }
 }
 
