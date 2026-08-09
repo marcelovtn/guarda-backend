@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String    @id
+  name                String
+  email               String    @unique
+  emailVerified       Boolean
+  image               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
+  role                String?
+  banned              Boolean?
+  banReason           String?
+  banExpires          DateTime?
+  isAnonymous         Boolean?
+  phoneNumber         String?   @unique
+  phoneNumberVerified Boolean?
+  userMetadata        Json?
+  appMetadata         Json?
+  invitedAt           DateTime?
+  lastSignInAt        DateTime?
+  accounts            Account[]
+  sessions            Session[]
+  userInfo            UserInfo?
+
+  @@map("user")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  expiresAt             DateTime?
+  password              String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now()) @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
+
+model UserInfo {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt           DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
+  userId              String?   @unique @map("user_id")
+  language            String?   @default("pt")
+  onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
+  user                User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deletedAt])
+  @@map("user_info")
+}

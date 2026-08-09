@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import sys,json; pkg=json.load\\(sys.stdin\\); deps={**pkg.get\\('dependencies',{}\\), **pkg.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in sorted\\(deps.items\\(\\)\\)]\")",
+      "Bash(npm uninstall *)",
+      "Bash(npm install *)"
+    ],
+    "additionalDirectories": [
+      "/home/marcelo/scm/am-backend/src/modules/transactions",
+      "/home/marcelo/scm/am-backend/prisma/migrations"
+    ]
+  }
+}
