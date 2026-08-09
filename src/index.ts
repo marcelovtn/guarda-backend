@@ -27,7 +27,9 @@ import {
   instructorLessonController,
   lessonController,
 } from "./modules/lesson/controllers/lesson.controller.js";
+import { progressController } from "./modules/progress/controllers/progress.controller.js";
 import { storageController } from "./modules/storage/controllers/storage.controller.js";
+import { subscriptionController } from "./modules/subscription/controllers/subscription.controller.js";
 import {
   instructorTrackController,
   trackController,
@@ -97,6 +99,8 @@ hono.route("/api/tracks", trackController);
 hono.route("/api/instructor/tracks", instructorTrackController);
 hono.route("/api/lessons", lessonController);
 hono.route("/api/instructor/lessons", instructorLessonController);
+hono.route("/api/progress", progressController);
+hono.route("/api/subscriptions", subscriptionController);
 
 serve(
   {
