@@ -53,6 +53,11 @@ export type LessonPlaybackDTO = {
     durationSec: number;
     trackPosition: number;
     completed: boolean;
+    /**
+     * Seconds watched. Together with `completed` this gives the three states
+     * the sidebar shows: untouched, started, finished.
+     */
+    lastPositionSec: number;
   }[];
   nextLesson: { id: string; title: string; durationSec: number } | null;
 };

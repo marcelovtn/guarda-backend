@@ -101,19 +101,23 @@ export class LessonRepository extends BaseRepository {
     });
   }
 
-  async findCompletedIn(lessonIds: string[]): Promise<Set<string>> {
-    if (lessonIds.length === 0) return new Set();
+  /** Progress for the given lessons, keyed by lesson id. */
+  async findProgressIn(lessonIds: string[]) {
+    if (lessonIds.length === 0) {
+      return new Map<string, { completed: boolean; lastPositionSec: number }>();
+    }
 
     const rows = await prisma.lessonProgress.findMany({
-      where: {
-        studentId: this.getUserId(),
-        lessonId: { in: lessonIds },
-        completed: true,
-      },
-      select: { lessonId: true },
+      where: { studentId: this.getUserId(), lessonId: { in: lessonIds } },
+      select: { lessonId: true, completed: true, lastPositionSec: true },
     });
 
-    return new Set(rows.map((r) => r.lessonId));
+    return new Map(
+      rows.map((r) => [
+        r.lessonId,
+        { completed: r.completed, lastPositionSec: r.lastPositionSec },
+      ]),
+    );
   }
 
   // --- instructor reads and writes -----------------------------------------

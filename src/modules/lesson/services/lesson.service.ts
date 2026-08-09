@@ -76,9 +76,9 @@ export class LessonService {
       ? await this.repository.findPublishedByTrackId(trackId)
       : [];
 
-    const [progress, completed, stats] = await Promise.all([
+    const [progress, siblingProgress, stats] = await Promise.all([
       this.repository.findProgress(lessonId),
-      this.repository.findCompletedIn(siblings.map((s) => s.id)),
+      this.repository.findProgressIn(siblings.map((s) => s.id)),
       instructorRepository.getStats(lesson.instructorId),
     ]);
 
@@ -117,7 +117,8 @@ export class LessonService {
         title: sibling.title,
         durationSec: sibling.durationSec,
         trackPosition: index + 1,
-        completed: completed.has(sibling.id),
+        completed: siblingProgress.get(sibling.id)?.completed ?? false,
+        lastPositionSec: siblingProgress.get(sibling.id)?.lastPositionSec ?? 0,
       })),
       nextLesson: next
         ? { id: next.id, title: next.title, durationSec: next.durationSec }
