@@ -71,6 +71,21 @@ export class TrackService {
     });
   }
 
+  /**
+   * The track a student with no history should start on — what the home page
+   * offers under "Comece por aqui".
+   *
+   * Picks the instructor's first beginner track, falling back to their first
+   * track. The instructor controls it by ordering their track list, which is
+   * the only signal left now that belt rank is gone from the product.
+   */
+  async getRecommendedForStudent(): Promise<TrackSummaryDTO | null> {
+    const tracks = await this.listForStudent();
+    if (tracks.length === 0) return null;
+
+    return tracks.find((track) => track.level === "BEGINNER") ?? tracks[0];
+  }
+
   async getForStudent(slug: string): Promise<TrackDetailDTO> {
     const track = await this.repository.findAccessibleBySlug(slug);
 

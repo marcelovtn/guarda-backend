@@ -15,6 +15,10 @@ export const trackController = new Hono()
   .get("/", async (c) => {
     return c.json(await trackService.listForStudent());
   })
+  // Registered before /:slug so the literal is not matched as a slug.
+  .get("/recommended", async (c) => {
+    return c.json(await trackService.getRecommendedForStudent());
+  })
   .get("/:slug", async (c) => {
     return c.json(await trackService.getForStudent(c.req.param("slug")));
   });
