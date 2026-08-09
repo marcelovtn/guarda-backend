@@ -76,9 +76,8 @@ export class LessonService {
       ? await this.repository.findPublishedByTrackId(trackId)
       : [];
 
-    const [progress, saved, completed, stats] = await Promise.all([
+    const [progress, completed, stats] = await Promise.all([
       this.repository.findProgress(lessonId),
-      this.repository.isSaved(lessonId),
       this.repository.findCompletedIn(siblings.map((s) => s.id)),
       instructorRepository.getStats(lesson.instructorId),
     ]);
@@ -112,7 +111,6 @@ export class LessonService {
       progress: {
         completed: progress?.completed ?? false,
         lastPositionSec: progress?.lastPositionSec ?? 0,
-        saved,
       },
       siblings: siblings.map((sibling, index) => ({
         id: sibling.id,

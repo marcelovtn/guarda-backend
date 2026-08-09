@@ -81,6 +81,7 @@ export class TrackService {
         level: track.level,
         lessonCount: lessons.length,
         totalDurationSec: sumDuration(lessons),
+        firstLessonId: lessons[0]?.id ?? null,
         progress: this.buildProgress(lessons, completed),
       };
     });
@@ -142,6 +143,7 @@ export class TrackService {
       level: track.level,
       lessonCount: lessons.length,
       totalDurationSec: sumDuration(lessons),
+      firstLessonId: lessons[0]?.id ?? null,
       progress: this.buildProgress(lessons, completed),
       instructor: track.instructor,
       modules: track.modules.map((module) => ({

@@ -27,10 +27,3 @@ export type ContinueWatchingDTO = {
   track: LessonTrackRefDTO | null;
 };
 
-export type SavedLessonDTO = {
-  lessonId: string;
-  title: string;
-  durationSec: number;
-  savedAt: Date;
-  track: LessonTrackRefDTO | null;
-};

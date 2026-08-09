@@ -5,7 +5,6 @@ import type { LessonTrackRefDTO } from "../../lesson/domains/lesson.types.js";
 import type {
   ContinueWatchingDTO,
   LessonProgressDTO,
-  SavedLessonDTO,
 } from "../domains/progress.types.js";
 import {
   ProgressRepository,
@@ -81,29 +80,6 @@ export class ProgressService {
       remainingSec: Math.max(0, lesson.durationSec - progress.lastPositionSec),
       track: await this.buildTrackRef(lesson),
     };
-  }
-
-  async listSaved(): Promise<SavedLessonDTO[]> {
-    const saved = await this.repository.listSaved();
-
-    return Promise.all(
-      saved.map(async ({ lesson, createdAt }) => ({
-        lessonId: lesson.id,
-        title: lesson.title,
-        durationSec: lesson.durationSec,
-        savedAt: createdAt,
-        track: await this.buildTrackRef(lesson),
-      })),
-    );
-  }
-
-  async save(lessonId: string) {
-    await this.repository.findAccessibleLesson(lessonId);
-    await this.repository.save(lessonId);
-  }
-
-  async unsave(lessonId: string) {
-    await this.repository.unsave(lessonId);
   }
 
   private toDTO(progress: {

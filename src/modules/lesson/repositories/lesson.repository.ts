@@ -101,16 +101,6 @@ export class LessonRepository extends BaseRepository {
     });
   }
 
-  async isSaved(lessonId: string): Promise<boolean> {
-    const saved = await prisma.savedLesson.findUnique({
-      where: {
-        studentId_lessonId: { studentId: this.getUserId(), lessonId },
-      },
-      select: { id: true },
-    });
-    return Boolean(saved);
-  }
-
   async findCompletedIn(lessonIds: string[]): Promise<Set<string>> {
     if (lessonIds.length === 0) return new Set();
 

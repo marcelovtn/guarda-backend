@@ -32,7 +32,6 @@ model User {
   instructor          Instructor?
   subscriptions       Subscription[]
   lessonProgress      LessonProgress[]
-  savedLessons        SavedLesson[]
 
   @@map("user")
 }
@@ -253,7 +252,6 @@ model Lesson {
   instructor Instructor       @relation(fields: [instructorId], references: [id], onDelete: Cascade)
   module     Module?          @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   progress   LessonProgress[]
-  savedBy    SavedLesson[]
 
   @@index([instructorId, status])
   @@index([moduleId, position])
@@ -305,16 +303,3 @@ model LessonProgress {
   @@map("lesson_progress")
 }
 
-/// The "Salvar" action in the player.
-model SavedLesson {
-  id        String   @id @default(dbgenerated("gen_random_uuid()"))
-  createdAt DateTime @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  studentId String   @map("student_id")
-  lessonId  String   @map("lesson_id")
-
-  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  lesson  Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@unique([studentId, lessonId])
-  @@map("saved_lesson")
-}

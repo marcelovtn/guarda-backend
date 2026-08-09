@@ -104,39 +104,6 @@ export class ProgressRepository extends BaseRepository {
     });
   }
 
-  async listSaved() {
-    const instructorIds = await this.getAccessibleInstructorIds();
-    if (instructorIds.length === 0) return [];
-
-    return prisma.savedLesson.findMany({
-      where: {
-        studentId: this.getUserId(),
-        lesson: {
-          instructorId: { in: instructorIds },
-          status: "PUBLISHED",
-          deletedAt: null,
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      include: { lesson: { include: withTrackContext } },
-    });
-  }
-
-  async save(lessonId: string) {
-    const studentId = this.getUserId();
-
-    return prisma.savedLesson.upsert({
-      where: { studentId_lessonId: { studentId, lessonId } },
-      update: {},
-      create: { studentId, lessonId },
-    });
-  }
-
-  async unsave(lessonId: string) {
-    await prisma.savedLesson.deleteMany({
-      where: { studentId: this.getUserId(), lessonId },
-    });
-  }
 }
 
 export const progressRepository = new ProgressRepository();

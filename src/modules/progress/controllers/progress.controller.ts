@@ -6,15 +6,12 @@ import { progressService } from "../services/progress.service.js";
 /**
  * Student progress, mounted at /api/progress.
  *
- * The literal routes are registered before /:lessonId, otherwise Hono would
- * match "continue" and "saved" as lesson ids.
+ * The literal route is registered before /:lessonId, otherwise Hono would
+ * match "continue" as a lesson id.
  */
 export const progressController = new Hono()
   .get("/continue", async (c) => {
     return c.json(await progressService.getContinueWatching());
-  })
-  .get("/saved", async (c) => {
-    return c.json(await progressService.listSaved());
   })
   .put("/:lessonId", async (c) => {
     const { lastPositionSec } = await c.req.json<SaveProgressDTO>();
@@ -38,12 +35,4 @@ export const progressController = new Hono()
     return c.json(
       await progressService.setCompleted(c.req.param("lessonId"), false),
     );
-  })
-  .post("/:lessonId/save", async (c) => {
-    await progressService.save(c.req.param("lessonId"));
-    return c.body(null, 204);
-  })
-  .delete("/:lessonId/save", async (c) => {
-    await progressService.unsave(c.req.param("lessonId"));
-    return c.body(null, 204);
   });

@@ -45,7 +45,7 @@ export type LessonPlaybackDTO = {
     lastPublishedAt: Date | null;
   };
   track: LessonTrackRefDTO | null;
-  progress: { completed: boolean; lastPositionSec: number; saved: boolean };
+  progress: { completed: boolean; lastPositionSec: number };
   /** Lessons around this one, for the sidebar. Empty when not in a track. */
   siblings: {
     id: string;
