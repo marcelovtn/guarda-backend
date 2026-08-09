@@ -1,3 +1,4 @@
+import type { Belt } from "@prisma/client";
 import { HTTPException } from "hono/http-exception";
 import { getAuthContext } from "../../../utils/authContext.js";
 import type { MinimalUserInfoDTO, UserInfoDTO } from "../domains/userInfo.types.js";
@@ -25,8 +26,12 @@ export class UserInfoService {
     };
   }
 
-  async createUserInfo(userId: string, language?: string): Promise<UserInfoDTO> {
-    const data = await this.repository.insertDefault(userId, language);
+  async createUserInfo(
+    userId: string,
+    language?: string,
+    belt?: Belt,
+  ): Promise<UserInfoDTO> {
+    const data = await this.repository.insertDefault(userId, language, belt);
     return this.mapToDTO(data);
   }
 

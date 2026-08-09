@@ -1,4 +1,4 @@
-import type { Lesson, Module } from "@prisma/client";
+import type { Belt, Lesson, Module, TrackLevel } from "@prisma/client";
 import { HTTPException } from "hono/http-exception";
 import type {
   CreateTrackDTO,
@@ -15,6 +15,21 @@ import {
 } from "../repositories/track.repository.js";
 
 type ModuleWithLessons = Module & { lessons: Lesson[] };
+
+/**
+ * Which level to start someone at, by belt.
+ *
+ * Coloured belts below purple are still building the base, so they get the
+ * beginner material; purple is where the intermediate game starts; brown and
+ * black are past it.
+ */
+const BELT_TO_LEVEL: Record<Belt, TrackLevel> = {
+  WHITE: "BEGINNER",
+  BLUE: "BEGINNER",
+  PURPLE: "INTERMEDIATE",
+  BROWN: "ADVANCED",
+  BLACK: "ADVANCED",
+};
 
 /** URL-safe slug from a Portuguese title. */
 export function slugify(value: string): string {
@@ -75,15 +90,29 @@ export class TrackService {
    * The track a student with no history should start on — what the home page
    * offers under "Comece por aqui".
    *
-   * Picks the instructor's first beginner track, falling back to their first
-   * track. The instructor controls it by ordering their track list, which is
-   * the only signal left now that belt rank is gone from the product.
+   * Uses the belt the student gave at sign-up to pick a level, then takes the
+   * instructor's first track at that level. Both signals matter: the belt says
+   * roughly where the student is, and the order of the track list is how the
+   * instructor says where to begin.
    */
   async getRecommendedForStudent(): Promise<TrackSummaryDTO | null> {
     const tracks = await this.listForStudent();
     if (tracks.length === 0) return null;
 
-    return tracks.find((track) => track.level === "BEGINNER") ?? tracks[0];
+    const belt = await this.repository.findCurrentStudentBelt();
+    const level = belt ? BELT_TO_LEVEL[belt] : "BEGINNER";
+
+    // Falls back down the levels rather than to an arbitrary track: a black
+    // belt with no advanced track is better served by an intermediate one than
+    // by whatever happens to be first.
+    const fallbackOrder: TrackLevel[] = [level, "INTERMEDIATE", "BEGINNER"];
+
+    for (const candidate of fallbackOrder) {
+      const match = tracks.find((track) => track.level === candidate);
+      if (match) return match;
+    }
+
+    return tracks[0];
   }
 
   async getForStudent(slug: string): Promise<TrackDetailDTO> {

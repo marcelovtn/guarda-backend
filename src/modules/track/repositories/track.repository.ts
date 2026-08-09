@@ -300,6 +300,16 @@ export class TrackRepository extends BaseRepository {
     return this.findOwned(trackId);
   }
 
+  /** The belt the current student gave at sign-up, if any. */
+  async findCurrentStudentBelt() {
+    const info = await prisma.userInfo.findUnique({
+      where: { userId: this.getUserId() },
+      select: { belt: true },
+    });
+
+    return info?.belt ?? null;
+  }
+
   /** Slugs are unique per instructor, so uniqueness is checked in that scope. */
   async slugExists(slug: string, excludeTrackId?: string): Promise<boolean> {
     const instructor = await this.getCurrentInstructor();

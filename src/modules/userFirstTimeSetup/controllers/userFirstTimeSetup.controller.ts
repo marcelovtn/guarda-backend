@@ -12,7 +12,11 @@ export const userFirstTimeSetupController = new Hono().post(
       body = {};
     }
     return c.json(
-      await userFirstTimeSetupServices.onboardIncomingUser(userId, body.language)
+      await userFirstTimeSetupServices.onboardIncomingUser(
+        userId,
+        body.language,
+        body.belt,
+      )
     );
   }
 );

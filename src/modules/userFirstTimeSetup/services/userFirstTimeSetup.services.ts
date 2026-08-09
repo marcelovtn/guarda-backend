@@ -1,12 +1,17 @@
+import type { Belt } from "@prisma/client";
 import { HTTPException } from "hono/http-exception";
 import { userInfoService } from "../../userInfo/services/userInfo.services.js";
 
 export class UserFirstTimeSetupService {
-  async onboardIncomingUser(userId: string, language?: string) {
+  async onboardIncomingUser(userId: string, language?: string, belt?: Belt) {
     const existingUserInfo = await userInfoService.checkIfUserInfoExists(userId);
 
     if (!existingUserInfo) {
-      const createdUserInfo = await userInfoService.createUserInfo(userId, language);
+      const createdUserInfo = await userInfoService.createUserInfo(
+        userId,
+        language,
+        belt,
+      );
       if (!createdUserInfo) {
         throw new HTTPException(400, { message: "User info not created" });
       }

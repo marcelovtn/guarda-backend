@@ -1,3 +1,4 @@
+import type { Belt } from "@prisma/client";
 import { HTTPException } from "hono/http-exception";
 import { BaseRepository } from "../../_shared/repositories/base.repository.js";
 
@@ -16,12 +17,12 @@ export class UserInfoRepository extends BaseRepository {
     }
   }
 
-  async insertDefault(userId: string, language?: string) {
+  async insertDefault(userId: string, language?: string, belt?: Belt) {
     const prisma = this.getClient();
 
     try {
       const data = await prisma.userInfo.create({
-        data: { userId, language },
+        data: { userId, language, belt },
       });
       return data;
     } catch (error: any) {

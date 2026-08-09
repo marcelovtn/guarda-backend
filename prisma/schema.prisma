@@ -90,6 +90,7 @@ model UserInfo {
   userId              String?   @unique @map("user_id")
   language            String?   @default("pt")
   onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
+  belt                Belt?
   user                User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([deletedAt])
@@ -116,6 +117,18 @@ enum TrackCategory {
   TAKEDOWNS
 
   @@map("track_category")
+}
+
+/// Belt the student says they are at, collected on sign-up. Used to pick which
+/// track to recommend on first access — it is not shown as a badge anywhere.
+enum Belt {
+  WHITE
+  BLUE
+  PURPLE
+  BROWN
+  BLACK
+
+  @@map("belt")
 }
 
 enum TrackLevel {
