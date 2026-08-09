@@ -24,6 +24,10 @@ import {
   instructorStudentsController,
 } from "./modules/instructor/controllers/instructor.controller.js";
 import { storageController } from "./modules/storage/controllers/storage.controller.js";
+import {
+  instructorTrackController,
+  trackController,
+} from "./modules/track/controllers/track.controller.js";
 import { userDataController } from "./modules/userData/controllers/userData.controller.js";
 import { userFirstTimeSetupController } from "./modules/userFirstTimeSetup/controllers/userFirstTimeSetup.controller.js";
 import { userInfoController } from "./modules/userInfo/controllers/userInfo.controller.js";
@@ -85,6 +89,8 @@ hono.route("/api/onboardIncomingUser", userFirstTimeSetupController);
 hono.route("/api/instructors", instructorController);
 hono.route("/api/instructor/profile", instructorProfileController);
 hono.route("/api/instructor/students", instructorStudentsController);
+hono.route("/api/tracks", trackController);
+hono.route("/api/instructor/tracks", instructorTrackController);
 
 serve(
   {
