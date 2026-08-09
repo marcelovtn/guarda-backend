@@ -37,7 +37,3 @@ export const authController = new Hono()
 // .get('/session', async (c) => {
 //   return c.json(await authService.getUserSession())
 // })
-// NOTE: Encryption key is fetched separately, not through auth service
-// .get('/encryption-key', async (c) => {
-//   return c.json(await authService.fetchAndUnscrambleUserEncryptionKey())
-// })

@@ -8,19 +8,19 @@ datasource db {
 }
 
 model User {
-  id                  String    @id
+  id                  String           @id
   name                String
-  email               String    @unique
+  email               String           @unique
   emailVerified       Boolean
   image               String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @default(now()) @updatedAt
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @default(now()) @updatedAt
   role                String?
   banned              Boolean?
   banReason           String?
   banExpires          DateTime?
   isAnonymous         Boolean?
-  phoneNumber         String?   @unique
+  phoneNumber         String?          @unique
   phoneNumberVerified Boolean?
   userMetadata        Json?
   appMetadata         Json?
@@ -29,6 +29,10 @@ model User {
   accounts            Account[]
   sessions            Session[]
   userInfo            UserInfo?
+  instructor          Instructor?
+  subscriptions       Subscription[]
+  lessonProgress      LessonProgress[]
+  savedLessons        SavedLesson[]
 
   @@map("user")
 }
@@ -90,4 +94,214 @@ model UserInfo {
 
   @@index([deletedAt])
   @@map("user_info")
+}
+
+// ---------------------------------------------------------------------------
+// GUARDA domain
+//
+// Conventions follow UserInfo above, not the Better Auth models: snake_case
+// @map, timestamptz columns, soft delete through deletedAt.
+//
+// The schema is multi-tenant from day one — every Track and Lesson belongs to
+// an Instructor, and access is granted per Subscription. The UI ships
+// single-instructor, but the data does not have to be migrated later.
+// ---------------------------------------------------------------------------
+
+enum TrackCategory {
+  GUARD
+  PASSING
+  CONTROL
+  SUBMISSIONS
+  ESCAPES
+  TAKEDOWNS
+
+  @@map("track_category")
+}
+
+enum TrackLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+
+  @@map("track_level")
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+
+  @@map("publish_status")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+
+  @@map("subscription_status")
+}
+
+/// A user who publishes content. The row existing is what makes someone an
+/// instructor — there is no role flag to keep in sync.
+model Instructor {
+  id           String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt    DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  userId       String    @unique @map("user_id")
+  /// Public profile URL segment: /p/<slug>
+  slug         String    @unique
+  displayName  String    @map("display_name")
+  /// Free-form text the instructor writes about themselves. The only thing a
+  /// student reads before subscribing.
+  bio          String?
+  /// Storage key of the profile photo, resolved through the storage module.
+  photoKey     String?   @map("photo_key")
+  /// Monthly price in cents, to avoid float rounding.
+  monthlyPrice Int       @default(0) @map("monthly_price")
+  published    Boolean   @default(false)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks        Track[]
+  lessons       Lesson[]
+  subscriptions Subscription[]
+
+  @@index([deletedAt])
+  @@map("instructor")
+}
+
+/// An ordered course. Category drives which row it appears in on the home page.
+model Track {
+  id           String        @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  instructorId String        @map("instructor_id")
+  title        String
+  slug         String
+  description  String?
+  category     TrackCategory
+  level        TrackLevel
+  /// Order within the instructor's track list.
+  position     Int           @default(0)
+  published    Boolean       @default(false)
+  publishedAt  DateTime?     @map("published_at") @db.Timestamptz(6)
+
+  instructor Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  modules    Module[]
+
+  @@unique([instructorId, slug])
+  @@index([instructorId, category])
+  @@index([deletedAt])
+  @@map("track")
+}
+
+/// A section inside a track ("Módulo 1 · Controle inicial").
+model Module {
+  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  trackId   String    @map("track_id")
+  title     String
+  position  Int       @default(0)
+
+  track   Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([trackId])
+  @@index([deletedAt])
+  @@map("module")
+}
+
+/// A recorded video lesson.
+///
+/// moduleId is nullable on purpose: a lesson with no module is the "aula sem
+/// trilha" state the instructor sees in the library, in the side panel of the
+/// track builder, and in the student's "Fora das trilhas" filter. It is a real
+/// state of the product, not an inconsistency to clean up.
+model Lesson {
+  id           String        @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  instructorId String        @map("instructor_id")
+  moduleId     String?       @map("module_id")
+  title        String
+  description  String?
+  /// Storage key of the source video, resolved through VideoProvider.
+  videoKey     String?       @map("video_key")
+  durationSec  Int           @default(0) @map("duration_sec")
+  status       PublishStatus @default(DRAFT)
+  /// Order within the module.
+  position     Int           @default(0)
+  publishedAt  DateTime?     @map("published_at") @db.Timestamptz(6)
+
+  instructor Instructor       @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  module     Module?          @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  progress   LessonProgress[]
+  savedBy    SavedLesson[]
+
+  @@index([instructorId, status])
+  @@index([moduleId, position])
+  @@index([deletedAt])
+  @@map("lesson")
+}
+
+/// A student's access to one instructor. Billing is out of scope for now — the
+/// checkout screen writes this row directly and the access gate reads it.
+model Subscription {
+  id           String             @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt    DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime?          @map("deleted_at") @db.Timestamptz(6)
+  studentId    String             @map("student_id")
+  instructorId String             @map("instructor_id")
+  status       SubscriptionStatus @default(ACTIVE)
+  /// Price in cents at the time of subscribing.
+  monthlyPrice Int                @map("monthly_price")
+  renewsAt     DateTime?          @map("renews_at") @db.Timestamptz(6)
+  canceledAt   DateTime?          @map("canceled_at") @db.Timestamptz(6)
+
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  instructor Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, instructorId])
+  @@index([studentId, status])
+  @@index([deletedAt])
+  @@map("subscription")
+}
+
+/// How far a student got in one lesson. Drives the home page "continue de onde
+/// parou" and the completion ticks in the track list.
+model LessonProgress {
+  id              String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  studentId       String    @map("student_id")
+  lessonId        String    @map("lesson_id")
+  completed       Boolean   @default(false)
+  lastPositionSec Int       @default(0) @map("last_position_sec")
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lesson  Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, lessonId])
+  @@index([studentId, updatedAt])
+  @@map("lesson_progress")
+}
+
+/// The "Salvar" action in the player.
+model SavedLesson {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt DateTime @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  studentId String   @map("student_id")
+  lessonId  String   @map("lesson_id")
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lesson  Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, lessonId])
+  @@map("saved_lesson")
 }

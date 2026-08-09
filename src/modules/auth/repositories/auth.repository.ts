@@ -11,26 +11,6 @@ export class AuthRepository extends BaseRepository {
    * await auth.api.signInEmail({ body: { email, password } })
    */
 
-  async getUserEncryptionKey(userId: string) {
-    const prisma = this.getClient();
-
-    try {
-      const data = await prisma.encryptionKey.findUnique({
-        where: { userId },
-        select: { key: true },
-      });
-
-      if (!data) {
-        throw new HTTPException(404, { message: "Encryption key not found" });
-      }
-
-      return data;
-    } catch (error: any) {
-      if (error instanceof HTTPException) throw error;
-      throw new HTTPException(400, { message: error.message });
-    }
-  }
-
   async checkEmailExists(email: string): Promise<boolean> {
     const prisma = this.getClient();
 
