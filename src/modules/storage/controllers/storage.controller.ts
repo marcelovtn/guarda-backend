@@ -1,22 +1,37 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import type { AssetKind } from "../services/storage.service.js";
 import { storageService } from "../services/storage.service.js";
 
 // Upload genérico para R2/S3. Três rotas:
 //   POST   /presign       -> presigned URL (upload direto do browser, sem passar o blob pelo backend)
-//   POST   /upload        -> upload multipart via backend (fallback)
+//   POST   /upload        -> upload multipart via backend (fallback, só imagem)
 //   DELETE /:key          -> remove o objeto
 // Todas exigem usuário autenticado (authContextMiddleware popula c.get("user")).
 // `folder` namespaceia o objeto — quem chama decide a estrutura de pastas.
+// `kind` seleciona a política de tipo/tamanho ("image" por padrão, "video" para aulas).
+const ASSET_KINDS = new Set<AssetKind>(["image", "video"]);
+
+function parseAssetKind(value: unknown): AssetKind | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string" && ASSET_KINDS.has(value as AssetKind)) {
+    return value as AssetKind;
+  }
+  throw new HTTPException(400, {
+    message: `kind inválido: ${String(value)}. Use "image" ou "video".`,
+  });
+}
+
 export const storageController = new Hono()
   .post("/presign", async (c) => {
     const user = c.get("user" as never) as { id: string } | null;
     if (!user) throw new HTTPException(401, { message: "Unauthorized" });
 
-    const { fileName, contentType, folder } = await c.req.json<{
+    const { fileName, contentType, folder, kind } = await c.req.json<{
       fileName: string;
       contentType: string;
       folder?: string;
+      kind?: string;
     }>();
 
     if (!fileName || !contentType) {
@@ -29,6 +44,7 @@ export const storageController = new Hono()
       fileName,
       contentType,
       folder,
+      parseAssetKind(kind),
     );
     return c.json(result);
   })
@@ -45,7 +61,11 @@ export const storageController = new Hono()
       throw new HTTPException(400, { message: "Arquivo não enviado" });
     }
 
-    const result = await storageService.uploadFile(file, folder);
+    const result = await storageService.uploadFile(
+      file,
+      folder,
+      parseAssetKind(body["kind"]),
+    );
     return c.json(result, 201);
   })
   .delete("/:key{.+}", async (c) => {
