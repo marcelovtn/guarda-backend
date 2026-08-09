@@ -18,6 +18,11 @@ import { handleError } from "./errors/errorHandler.js";
 import { auth } from "./lib/auth.js";
 import { authContextMiddleware } from "./middlewares/authContext.js";
 import { authController } from "./modules/auth/controllers/auth.controller.js";
+import {
+  instructorController,
+  instructorProfileController,
+  instructorStudentsController,
+} from "./modules/instructor/controllers/instructor.controller.js";
 import { storageController } from "./modules/storage/controllers/storage.controller.js";
 import { userDataController } from "./modules/userData/controllers/userData.controller.js";
 import { userFirstTimeSetupController } from "./modules/userFirstTimeSetup/controllers/userFirstTimeSetup.controller.js";
@@ -73,6 +78,13 @@ hono.route("/api/storage", storageController);
 hono.route("/api/userInfo", userInfoController);
 hono.route("/api/user-data", userDataController);
 hono.route("/api/onboardIncomingUser", userFirstTimeSetupController);
+
+// --- GUARDA -----------------------------------------------------------------
+// Student-facing routes read content scoped by subscription; the /api/instructor
+// namespace is for managing your own catalogue and requires an Instructor row.
+hono.route("/api/instructors", instructorController);
+hono.route("/api/instructor/profile", instructorProfileController);
+hono.route("/api/instructor/students", instructorStudentsController);
 
 serve(
   {
