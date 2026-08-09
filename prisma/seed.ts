@@ -6,10 +6,18 @@
  * Idempotent — safe to run repeatedly. Run with `yarn db:seed`.
  */
 import { PrismaClient, PublishStatus } from '@prisma/client'
+import bcrypt from 'bcrypt'
 import { randomUUID } from 'node:crypto'
 import { ORPHAN_LESSONS, TRACKS } from './data/tracks.js'
 
 const prisma = new PrismaClient()
+
+/**
+ * Password for both seeded accounts. Development only — these users exist so
+ * the app can be opened and clicked through, and they are never created
+ * anywhere but a local database.
+ */
+const SEED_PASSWORD = '12345678'
 
 const INSTRUCTOR = {
   email: 'rafael@guarda.app',
@@ -28,17 +36,45 @@ const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000)
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000)
 
 /**
- * Better Auth owns the user table and generates its own ids, so the seed
- * writes users directly rather than going through the auth API. These accounts
- * have no password — sign in with Google, or register normally and promote the
- * account afterwards.
+ * Better Auth owns the user table and generates its own ids, so the seed writes
+ * users directly rather than going through the auth API.
+ *
+ * The credential row has to be written too, in the exact shape Better Auth
+ * expects — providerId "credential", accountId equal to the user id, and a
+ * bcrypt hash matching the hasher configured in src/lib/auth.ts. Without it the
+ * user exists but cannot sign in, which is a confusing thing to hand someone.
  */
 async function upsertUser(email: string, name: string) {
-  return prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { email },
     update: { name },
     create: { id: randomUUID(), email, name, emailVerified: true },
   })
+
+  const existingCredential = await prisma.account.findFirst({
+    where: { userId: user.id, providerId: 'credential' },
+    select: { id: true },
+  })
+
+  const password = await bcrypt.hash(SEED_PASSWORD, 10)
+
+  if (existingCredential) {
+    await prisma.account.update({
+      where: { id: existingCredential.id },
+      data: { password },
+    })
+  } else {
+    await prisma.account.create({
+      data: {
+        userId: user.id,
+        accountId: user.id,
+        providerId: 'credential',
+        password,
+      },
+    })
+  }
+
+  return user
 }
 
 async function main() {
@@ -183,6 +219,10 @@ async function main() {
   console.log(
     `Done. ${TRACKS.length} tracks, ${lessonCount} lessons, 1 instructor, 1 subscribed student.`,
   )
+  console.log('')
+  console.log('Sign in with:')
+  console.log(`  instructor  ${INSTRUCTOR.email}  ${SEED_PASSWORD}`)
+  console.log(`  student     ${STUDENT.email}  ${SEED_PASSWORD}`)
 }
 
 main()
