@@ -28,6 +28,7 @@ type LessonWithContext = {
   module: {
     id: string;
     title: string;
+    position: number;
     trackId: string;
     track: {
       id: string;
@@ -260,6 +261,7 @@ export class LessonService {
       category: lesson.module.track.category,
       moduleId: lesson.module.id,
       moduleTitle: lesson.module.title,
+      moduleNumber: lesson.module.position + 1,
       modulePosition: lesson.position + 1,
       trackPosition: positions.get(lesson.id) ?? lesson.position + 1,
     };

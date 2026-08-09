@@ -9,7 +9,9 @@ export type LessonTrackRefDTO = {
   category: TrackCategory;
   moduleId: string;
   moduleTitle: string;
-  /** 1-based index within the module. */
+  /** 1-based ordinal of the module within the track — "Módulo 2". */
+  moduleNumber: number;
+  /** 1-based index of the lesson within its module. */
   modulePosition: number;
   /** 1-based index across the whole track — what the UI calls "aula 07". */
   trackPosition: number;
