@@ -15,6 +15,7 @@ BigInt.prototype.toJSON = function () {
 };
 
 import { handleError } from "./errors/errorHandler.js";
+import { isAllowedOrigin } from "./lib/allowedOrigins.js";
 import { auth } from "./lib/auth.js";
 import { authContextMiddleware } from "./middlewares/authContext.js";
 import { authController } from "./modules/auth/controllers/auth.controller.js";
@@ -50,14 +51,7 @@ const hono = new Hono<{
 hono.use(
   "/api/*",
   cors({
-    origin: [
-      "https://amfinance.com.br",
-      "https://www.amfinance.com.br",
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:3001",
-    ],
+    origin: (origin) => (isAllowedOrigin(origin) ? origin : null),
     credentials: true,
     allowHeaders: [
       "Content-Type",

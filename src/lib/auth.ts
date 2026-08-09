@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { betterAuth } from "better-auth";
 import { admin, anonymous, phoneNumber } from "better-auth/plugins";
 import { Pool } from "pg";
+import { trustedOrigins } from "./allowedOrigins.js";
 const isProduction = process.env.NODE_ENV === "production";
 
 const poolConfig = {
@@ -23,20 +24,12 @@ export const auth = betterAuth({
 
   baseURL: process.env.BACKEND_URL || "http://localhost:3001",
 
-  trustedOrigins: [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-    "https://jupter.app",
-    "https://www.jupter.app",
-    "https://api.jupter.app",
-  ],
+  trustedOrigins: trustedOrigins(),
   advanced: {
-    cookiePrefix: "am",
+    cookiePrefix: "guarda",
     crossSubDomainCookies: {
-      enabled: isProduction,
-      domain: isProduction ? "jupter.app" : undefined,
+      enabled: isProduction && Boolean(process.env.COOKIE_DOMAIN),
+      domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
     },
     defaultCookieAttributes: {
       sameSite: "lax",
