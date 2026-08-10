@@ -5,6 +5,7 @@ import { videoProvider } from "../../../lib/videoProvider.js";
 import { instructorRepository } from "../../instructor/repositories/instructor.repository.js";
 import type {
   CreateLessonDTO,
+  InstructorLessonDetailDTO,
   InstructorLessonDTO,
   LessonListItemDTO,
   LessonPlaybackDTO,
@@ -147,8 +148,33 @@ export class LessonService {
     }));
   }
 
-  async getForInstructor(lessonId: string) {
-    return this.repository.findOwned(lessonId);
+  async getForInstructor(
+    lessonId: string,
+  ): Promise<InstructorLessonDetailDTO> {
+    const lesson = await this.repository.findOwned(lessonId);
+
+    const [positions, viewers] = await Promise.all([
+      this.buildTrackPositions([lesson]),
+      this.repository.countViewers([lesson.id]),
+    ]);
+
+    return {
+      id: lesson.id,
+      title: lesson.title,
+      description: lesson.description,
+      durationSec: lesson.durationSec,
+      status: lesson.status,
+      publishedAt: lesson.publishedAt,
+      hasVideo: Boolean(lesson.videoKey),
+      videoUrl: lesson.videoKey
+        ? await videoProvider.getPlaybackUrl(lesson.videoKey)
+        : null,
+      processing: await videoProvider.getProcessingStatus(
+        lesson.videoKey ?? "",
+      ),
+      track: this.buildTrackRef(lesson, positions),
+      viewerCount: viewers.get(lesson.id) ?? 0,
+    };
   }
 
   /**

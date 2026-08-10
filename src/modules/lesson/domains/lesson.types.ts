@@ -75,6 +75,19 @@ export type InstructorLessonDTO = {
   viewerCount: number;
 };
 
+/**
+ * A single lesson as its own editor sees it.
+ *
+ * Carries the fields the library row does not need — description, the module it
+ * sits in, and a playable URL so the instructor can check the video they
+ * uploaded without leaving the screen.
+ */
+export type InstructorLessonDetailDTO = InstructorLessonDTO & {
+  description: string | null;
+  videoUrl: string | null;
+  processing: VideoProcessingStatus;
+};
+
 export type CreateLessonDTO = {
   title: string;
   description?: string | null;
