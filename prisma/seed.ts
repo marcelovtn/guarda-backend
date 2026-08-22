@@ -20,11 +20,11 @@ const prisma = new PrismaClient()
 const SEED_PASSWORD = '12345678'
 
 const INSTRUCTOR = {
-  email: 'rafael@guarda.app',
-  name: 'Rafael Moura',
-  slug: 'rafaelmoura',
+  email: 'joaopedro@guarda.app',
+  name: 'João Pedro',
+  slug: 'joaopedro',
   bio: 'Ensino jiu jitsu há doze anos. Aqui eu subo as aulas na ordem exata que eu ensino no tatame — do fundamento à finalização. Você não escolhe vídeo, você segue a trilha.',
-  monthlyPriceCents: 4990,
+  monthlyPriceCents: 1990,
 }
 
 const STUDENT = { email: 'aluno@guarda.app', name: 'Marcelo Távora' }
