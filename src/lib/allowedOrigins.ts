@@ -16,6 +16,30 @@ function configuredOrigins(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Where to send a browser that is coming back from an external flow — today
+ * only Stripe Checkout.
+ *
+ * It cannot be derived from the request: Stripe redirects the student, so the
+ * URL has to be absolute and known server-side. FRONTEND_URL wins when set;
+ * otherwise the first configured origin, which is already the production front.
+ * The localhost fallback is development only, so a missing production config
+ * fails loudly instead of redirecting a real student to their own machine.
+ */
+export function frontendUrl(): string {
+  const configured = process.env.FRONTEND_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+
+  const [first] = configuredOrigins();
+  if (first) return first.replace(/\/$/, "");
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FRONTEND_URL is not set");
+  }
+
+  return "http://localhost:3000";
+}
+
 export function isAllowedOrigin(origin: string): boolean {
   if (!origin) return false;
 

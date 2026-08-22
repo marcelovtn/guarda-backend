@@ -25,7 +25,3 @@ export type SubscriptionDTO = {
     totalCount: number;
   } | null;
 };
-
-export type CreateSubscriptionDTO = {
-  instructorSlug: string;
-};

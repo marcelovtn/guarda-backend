@@ -1452,6 +1452,11 @@ strip-json-comments@^5.0.2:
   resolved "https://registry.npmjs.org/strip-json-comments/-/strip-json-comments-5.0.3.tgz"
   integrity sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==
 
+stripe@^22.5.0:
+  version "22.5.0"
+  resolved "https://registry.yarnpkg.com/stripe/-/stripe-22.5.0.tgz#78efe2b9ebcb167da966c356138f2f5ceb3f443e"
+  integrity sha512-QVwMwriC0bbySx6R4dpsvJ0W//GojC1kwWVS6rPSoVqDUIZX4Hy3TaUrd2AZeXEAaKbfWIjQjvo3vKAReHZ0vQ==
+
 strnum@^2.2.3:
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/strnum/-/strnum-2.4.0.tgz#304881c3299b017855f1934a4ce85bfb60b1ca2a"

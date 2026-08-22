@@ -28,6 +28,7 @@ import {
   instructorLessonController,
   lessonController,
 } from "./modules/lesson/controllers/lesson.controller.js";
+import { paymentController } from "./modules/payment/controllers/payment.controller.js";
 import { platformController } from "./modules/platform/controllers/platform.controller.js";
 import { progressController } from "./modules/progress/controllers/progress.controller.js";
 import { storageController } from "./modules/storage/controllers/storage.controller.js";
@@ -96,6 +97,8 @@ hono.route("/api/lessons", lessonController);
 hono.route("/api/instructor/lessons", instructorLessonController);
 hono.route("/api/progress", progressController);
 hono.route("/api/subscriptions", subscriptionController);
+// Billing. /api/payment/webhook is called by Stripe, not by the app.
+hono.route("/api/payment", paymentController);
 hono.route("/api/platform", platformController);
 
 serve(

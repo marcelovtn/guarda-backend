@@ -8,8 +8,10 @@ export const loggerMiddleware: MiddlewareHandler = async (c, next) => {
   const { method, url } = c.req;
   const path = new URL(url).pathname;
 
+  // Never log a payment payload. The header is the real test — the path is
+  // here so the intent survives if Stripe ever calls without it.
   const isStripeWebhook =
-    !!c.req.header("stripe-signature") || path.startsWith("/api/stripe/webhook");
+    !!c.req.header("stripe-signature") || path.startsWith("/api/payment/webhook");
   const contentType = (c.req.header("content-type") || "").toLowerCase();
   const shouldTryBody =
     ["POST", "PUT", "PATCH"].includes(method) && !isStripeWebhook;

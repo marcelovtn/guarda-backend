@@ -10,6 +10,7 @@
     "db:generate": "npx prisma generate",
     "db:studio": "npx prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "instructor:create": "tsx prisma/provision-instructor.ts",
     "postinstall": "npx prisma generate"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "pino": "^10.1.0",
     "prisma": "^6.19.0",
     "resend": "^6.4.2",
+    "stripe": "^22.5.0",
     "ua-parser-js": "^1.0.39"
   },
   "devDependencies": {
