@@ -32,7 +32,12 @@ export const auth = betterAuth({
       domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
     },
     defaultCookieAttributes: {
-      sameSite: "lax",
+      // Front e back vivem em hosts diferentes sob *.up.railway.app, que está
+      // na Public Suffix List: não dá para compartilhar cookie por domínio, e
+      // "lax" faz o browser descartar o cookie na chamada XHR do frontend.
+      // "none" é o que resta enquanto não houver domínio próprio — quando ele
+      // chegar, volte para "lax" e preencha COOKIE_DOMAIN.
+      sameSite: isProduction ? "none" : "lax",
       secure: isProduction,
       httpOnly: true,
       path: "/",
