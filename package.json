@@ -3,14 +3,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "npx prisma migrate deploy && tsc",
+    "build": "tsc",
     "start": "node dist/index.js",
     "db:migrate": "npx prisma migrate deploy",
     "db:migrate:dev": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "db:studio": "npx prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "npx prisma generate"
+    "postinstall": "npx prisma generate",
+    "bootstrap:instructor": "tsx src/scripts/bootstrapInstructor.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1040.0",
