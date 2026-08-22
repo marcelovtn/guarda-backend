@@ -6,7 +6,7 @@ import { storageService } from "../services/storage.service.js";
 // Upload genérico para R2/S3. Três rotas:
 //   POST   /presign       -> presigned URL (upload direto do browser, sem passar o blob pelo backend)
 //   POST   /upload        -> upload multipart via backend (fallback, só imagem)
-//   DELETE /:key          -> remove o objeto
+//   DELETE /:key?kind=    -> remove o objeto (kind escolhe o bucket)
 // Todas exigem usuário autenticado (authContextMiddleware popula c.get("user")).
 // `folder` namespaceia o objeto — quem chama decide a estrutura de pastas.
 // `kind` seleciona a política de tipo/tamanho ("image" por padrão, "video" para aulas).
@@ -75,6 +75,8 @@ export const storageController = new Hono()
     const key = c.req.param("key");
     if (!key) throw new HTTPException(400, { message: "Key não informada" });
 
-    await storageService.deleteFile(key);
+    // `kind` diz em qual bucket procurar — sem isso um vídeo seria buscado no
+    // bucket público e o delete falharia em silêncio.
+    await storageService.deleteFile(key, parseAssetKind(c.req.query("kind")));
     return c.body(null, 204);
   });
