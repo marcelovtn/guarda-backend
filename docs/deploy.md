@@ -1,5 +1,32 @@
 # Deploy — R2 e Railway
 
+## Estado atual (2026-08-22)
+
+Já está tudo de pé. Este roteiro serve para reconstruir do zero ou para
+entender o que existe.
+
+| O quê | Onde |
+|---|---|
+| Projeto Railway | `guarda` |
+| API | https://api-production-9bec.up.railway.app |
+| Frontend | https://web-production-15d196.up.railway.app |
+| Banco | Postgres da Railway, rede privada (`postgres.railway.internal`) |
+| Conta Cloudflare | `11bfca83f9d25dc976e03a44af06b39e` |
+| Bucket público | `guarda-media` → https://pub-3be089b76d244560a6275b9a01e790e9.r2.dev |
+| Bucket privado | `guarda-videos` (sem URL pública, só assinada) |
+| CORS | aplicado nos dois buckets |
+| Token R2 | "GUARDA - api (Railway)", Object Read & Write, escopado nos dois buckets |
+| Alertas de gasto | e-mail em US$ 2 e US$ 5 (avisam, **não bloqueiam**) |
+
+O fluxo de upload foi verificado em produção de ponta a ponta: presign, PUT de
+53 MB, aula publicada, URL assinada devolvendo `206` com range, o mesmo objeto
+sem assinatura devolvendo `400`, troca de vídeo apagando o arquivo antigo, e o
+`<video>` do player chegando a `readyState 4` num browser real.
+
+O deploy hoje sai de `railway up` a partir do repositório local. Conectar o
+serviço ao GitHub, para redeploy automático a cada merge, ainda não foi feito.
+
+
 Roteiro de quem sobe o GUARDA do zero. A ordem importa: cada bloco depende de
 um valor gerado pelo anterior.
 
