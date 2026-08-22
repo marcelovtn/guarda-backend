@@ -133,6 +133,11 @@ com o banco — se um dia falar, é regressão.
 | `NEXT_PUBLIC_SITE_URL` | `https://SEU-FRONTEND.up.railway.app` |
 | `NEXT_PUBLIC_ENABLE_GOOGLE_AUTH` | `false` |
 | `NEXT_PUBLIC_ENABLE_PASSWORD_RESET` | `false` |
+| `NEXT_PUBLIC_DEFAULT_INSTRUCTOR` | slug do professor para quem o fluxo de assinatura aponta |
+
+`NEXT_PUBLIC_DEFAULT_INSTRUCTOR` vazio é válido: as telas de plano e de checkout
+mostram "nenhum professor disponível" em vez de carregar para sempre. Aponte
+para o slug do professor real quando ele existir.
 
 > **`NEXT_PUBLIC_*` entra no bundle em tempo de build.** Mudar o valor exige
 > **redeploy**, não restart. É a confusão número um: a variável aparece certa no
@@ -191,3 +196,31 @@ liga isso na própria tela de perfil quando quiser aparecer.
 Erros que a rota devolve: `404` se o e-mail não tem conta (a pessoa precisa se
 cadastrar antes), `409` se a conta já é professor ou se o slug está tomado,
 `403` se quem chama não está em `GOD_USERS`.
+
+Um professor recém-criado nasce **despublicado**, então ele ainda não aparece no
+fluxo de assinatura nem nos números da landing. Quem vai ser visto liga isso em
+`/instructor/profile`.
+
+## Consertos operacionais
+
+Dois scripts rodam dentro do serviço, porque o Postgres da Railway só existe na
+rede privada dela. Nenhum dos dois tem tela equivalente no produto.
+
+```bash
+# Primeiro professor de um banco vazio (o endpoint exige um admin que ainda não existe).
+# Quando o e-mail não bate, ele lista as contas cadastradas.
+railway ssh -s api node dist/scripts/bootstrapInstructor.js <email> <slug> "<Nome>" [centavos]
+
+# Corrigir o e-mail de uma conta.
+railway ssh -s api node dist/scripts/changeUserEmail.js <atual> <novo>
+```
+
+O segundo existe por um motivo que vale conhecer: `requireEmailVerification`
+está desligado, então um typo no cadastro cria uma conta que funciona
+normalmente e que ninguém consegue recuperar — o link de recuperação vai para um
+endereço que não é da pessoa. Já aconteceu uma vez. Enquanto não houver
+verificação de e-mail, o conserto é operacional.
+
+> Atenção: `railway ssh` junta o comando e o re-divide por espaço. Um nome entre
+> aspas chega partido — os scripts tratam isso, mas não conte com aspas
+> sobrevivendo.

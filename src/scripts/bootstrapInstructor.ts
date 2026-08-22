@@ -28,6 +28,25 @@ function fail(message: string): never {
   process.exit(1)
 }
 
+/**
+ * Contas que existem, para quando o e-mail informado não bate.
+ *
+ * Sem isso o erro é um beco: quem roda o script não tem outro jeito de olhar o
+ * banco — o Postgres da Railway só existe na rede privada dela — e fica
+ * adivinhando qual e-mail a pessoa usou de fato no cadastro.
+ */
+async function listAccounts(prisma: PrismaClient): Promise<string> {
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: { email: true, name: true },
+  })
+
+  if (users.length === 0) return '  (nenhuma conta cadastrada ainda)'
+
+  return users.map((u) => `  ${u.email}  —  ${u.name}`).join('\n')
+}
+
 /*
  * O nome vem como "resto dos argumentos", não como uma posição.
  *
@@ -75,9 +94,12 @@ const user = await prisma.user.findUnique({
 })
 
 if (!user) {
+  const existing = await listAccounts(prisma)
   fail(
     `Nenhuma conta com o e-mail ${normalizedEmail}.\n` +
-      '  A pessoa precisa se cadastrar pela tela de criar conta antes de ser promovida.',
+      '  A pessoa precisa se cadastrar antes de ser promovida.\n\n' +
+      '  Contas mais recentes:\n' +
+      existing,
   )
 }
 
