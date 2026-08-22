@@ -20,6 +20,7 @@ import { auth } from "./lib/auth.js";
 import { authContextMiddleware } from "./middlewares/authContext.js";
 import { authController } from "./modules/auth/controllers/auth.controller.js";
 import {
+  adminInstructorController,
   instructorController,
   instructorProfileController,
   instructorStudentsController,
@@ -97,6 +98,9 @@ hono.route("/api/instructor/lessons", instructorLessonController);
 hono.route("/api/progress", progressController);
 hono.route("/api/subscriptions", subscriptionController);
 hono.route("/api/platform", platformController);
+
+// Promover alguém a professor. GOD_USERS decide quem pode chamar.
+hono.route("/api/admin/instructors", adminInstructorController);
 
 serve(
   {

@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import type { UpdateInstructorProfileDTO } from "../domains/instructor.types.js";
+import { adminRequired } from "../../../middlewares/adminRequired.js";
+import type {
+  CreateInstructorDTO,
+  UpdateInstructorProfileDTO,
+} from "../domains/instructor.types.js";
 import { instructorService } from "../services/instructor.service.js";
 
 /**
@@ -51,3 +55,19 @@ export const instructorProfileController = new Hono()
 export const instructorStudentsController = new Hono().get("/", async (c) => {
   return c.json(await instructorService.listOwnStudents());
 });
+
+/**
+ * Gestão de professores, montada em /api/admin/instructors.
+ *
+ * Existe porque nada mais no produto cria uma linha `Instructor`, e é ela que
+ * torna alguém professor. Sem esta rota, um banco novo nunca tem professor e
+ * toda a área do professor responde 403 para sempre.
+ *
+ * Protegida por `adminRequired`, que lê a lista de ids em GOD_USERS.
+ */
+export const adminInstructorController = new Hono()
+  .use(adminRequired)
+  .post("/", async (c) => {
+    const body = await c.req.json<CreateInstructorDTO>();
+    return c.json(await instructorService.promoteToInstructor(body), 201);
+  });
