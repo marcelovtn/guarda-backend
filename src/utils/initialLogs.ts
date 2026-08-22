@@ -5,7 +5,7 @@ export const getStarterLog = (info: any) => {
 
   const banner = [
     '',
-    '🟢 AM Backend is up! 🚀',
+    '🟢 GUARDA API is up! 🚀',
     '──────────────────────────────────────────────',
     `🔗 URL:    ${url}`,
     `🔊 Port:   ${info.port}`,
