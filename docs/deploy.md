@@ -201,6 +201,69 @@ Um professor recém-criado nasce **despublicado**, então ele ainda não aparece
 fluxo de assinatura nem nos números da landing. Quem vai ser visto liga isso em
 `/instructor/profile`.
 
+## Trocar para domínio próprio
+
+O domínio escolhido é `guardabjj.com.br`. A troca é **configuração, não código**:
+`sameSite` é derivado de `COOKIE_DOMAIN` em `src/lib/auth.ts`, e o endereço
+público que a tela de perfil mostra vem de `NEXT_PUBLIC_SITE_URL`.
+
+Preencher `COOKIE_DOMAIN` muda três comportamentos de uma vez, porque o cookie
+passa a chegar nos dois hosts: `sameSite` volta para `lax`, o redirect do
+`src/middleware.ts` do frontend volta a funcionar, e `getSession()` no servidor
+volta a resolver sessão.
+
+### 1. DNS pela Cloudflare
+
+Registre em [registro.br](https://registro.br) (precisa de CPF ou CNPJ) e
+**mova a zona para a Cloudflare**, trocando os nameservers no Registro.br.
+
+O motivo é técnico: um apex não pode ser CNAME, e a Railway entrega um alvo
+CNAME. A Cloudflare faz *flattening*, que resolve isso. De quebra, habilita
+domínio customizado no bucket de mídia depois — o `pub-*.r2.dev` atual é
+limitado por taxa e a própria Cloudflare não recomenda para produção.
+
+### 2. Domínios na Railway
+
+| Serviço | Domínio |
+|---|---|
+| `web` | `guardabjj.com.br` |
+| `api` | `api.guardabjj.com.br` |
+
+A Railway dá um alvo CNAME para cada. No DNS da Cloudflare, crie os dois como
+**DNS only** (nuvem cinza) — o proxy laranja atrapalha a emissão do certificado.
+
+### 3. Variáveis
+
+No `api`:
+
+| Variável | Valor |
+|---|---|
+| `BACKEND_URL` | `https://api.guardabjj.com.br` |
+| `ALLOWED_ORIGINS` | `https://guardabjj.com.br` |
+| `COOKIE_DOMAIN` | `.guardabjj.com.br` |
+
+No `web`:
+
+| Variável | Valor |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | `https://api.guardabjj.com.br` |
+| `NEXT_PUBLIC_SITE_URL` | `https://guardabjj.com.br` |
+
+**Redeploy os dois**, não restart: `NEXT_PUBLIC_*` entra no bundle em tempo de
+build.
+
+### 4. O passo que quebra o upload se esquecido
+
+Adicione `https://guardabjj.com.br` ao **CORS dos dois buckets** do R2. A
+política atual só conhece o host `*.up.railway.app`; sem isso, todo upload
+falha no browser com um erro que não menciona CORS.
+
+### 5. Conferir
+
+Nesta ordem, porque cada um falha de um jeito diferente: login, upload de foto,
+upload de vídeo, e abrir `/` já logado — se o redirect para `/home` acontecer, o
+cookie está chegando ao frontend e o middleware voltou a funcionar.
+
 ## Consertos operacionais
 
 Dois scripts rodam dentro do serviço, porque o Postgres da Railway só existe na

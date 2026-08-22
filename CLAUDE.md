@@ -93,11 +93,11 @@ aparece no payload de escrita.
   autorizado; recuperação de senha precisa de `sendResetPassword` descomentado
   aqui e de templates novos — os de `src/lib/resend.ts` são de outro produto,
   o Jupter, com logo, remetente e assinatura dele.
-- `sameSite: "none"` em produção (`src/lib/auth.ts`) é dívida assumida enquanto
-  o projeto vive em `*.up.railway.app`: front e back ficam em hosts distintos
-  sob um sufixo público, então não há como compartilhar cookie por domínio.
-  Quando houver domínio próprio, voltar para `"lax"` e preencher
-  `COOKIE_DOMAIN`.
+- `sameSite` é derivado de `COOKIE_DOMAIN`, não fixo: sem ele o cookie é
+  cross-site e vai de `"none"`; com ele volta a `"lax"`. Preencher essa variável
+  também reativa o redirect do middleware no frontend e a leitura de sessão no
+  servidor, porque o cookie passa a chegar nos dois hosts. Ver
+  [`docs/deploy.md`](docs/deploy.md).
 - Um vídeo enviado numa tela de "nova aula" que o professor abandona antes de
   salvar fica órfão no bucket. Ninguém limpa.
 - `publicRoutes.INSTRUCTOR_PROFILE` aponta para `/p/<slug>`, que o frontend
