@@ -1,0 +1,92 @@
+# Dump do Postgres a cada merge na master, guardado no R2.
+#
+# Não cria mais branch de checkpoint por push: o histórico do git já é o
+# checkpoint, e uma branch por merge só transforma a lista de branches em ruído.
+# O que o git não recupera é o estado do banco — é esse que vale copiar.
+name: Backup do banco na master
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  dump:
+    name: Dump do Postgres para o R2
+    runs-on: ubuntu-latest
+
+    steps:
+      # O contexto `secrets` não existe em `if` de job, então a checagem vive
+      # num step. Sem os secrets não há de onde ler nem para onde mandar, e
+      # pular é melhor do que falhar: um check vermelho em todo push ensina o
+      # time a ignorar check vermelho.
+      - name: Verificar se o backup está configurado
+        id: guard
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BACKUP_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
+        run: |
+          missing=""
+          if [ -z "$DATABASE_URL" ];          then missing="$missing DATABASE_URL"; fi
+          if [ -z "$R2_ACCOUNT_ID" ];         then missing="$missing R2_ACCOUNT_ID"; fi
+          if [ -z "$R2_ACCESS_KEY_ID" ];      then missing="$missing R2_ACCESS_KEY_ID"; fi
+          if [ -z "$R2_SECRET_ACCESS_KEY" ];  then missing="$missing R2_SECRET_ACCESS_KEY"; fi
+          if [ -z "$R2_BACKUP_BUCKET" ];      then missing="$missing R2_BACKUP_BUCKET"; fi
+
+          if [ -n "$missing" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Backup pulado::Faltam secrets:$missing"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Um carimbo só, para nomear o arquivo e para subi-lo. A versão anterior
+      # calculava a data em dois steps distintos: um push na virada do minuto
+      # gerava um nome no dump e outro no upload, e o upload não achava o arquivo.
+      - name: Carimbo de tempo
+        if: steps.guard.outputs.configured == 'true'
+        id: stamp
+        run: echo "value=$(date -u +'%Y-%m-%dT%H-%M')" >> "$GITHUB_OUTPUT"
+
+      # Sem checkout: um pg_dump não lê nada do repositório.
+      #
+      # O runner traz o pg_dump 16 e um servidor 17 recusa dump de cliente mais
+      # antigo, então o cliente 17 entra explicitamente.
+      - name: Instalar cliente PostgreSQL 17
+        if: steps.guard.outputs.configured == 'true'
+        run: |
+          sudo apt-get install -y curl ca-certificates
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump do banco
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STAMP: ${{ steps.stamp.outputs.value }}
+        run: |
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" \
+            --no-owner \
+            --no-acl \
+            --format=custom \
+            --file="dump-${STAMP}.pgdump"
+
+      - name: Enviar dump para o R2
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BACKUP_BUCKET: ${{ secrets.R2_BACKUP_BUCKET }}
+          STAMP: ${{ steps.stamp.outputs.value }}
+        run: |
+          aws s3 cp "dump-${STAMP}.pgdump" \
+            "s3://${R2_BACKUP_BUCKET}/dumps/dump-${STAMP}.pgdump" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"

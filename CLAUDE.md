@@ -57,6 +57,12 @@ pessoa e vai entrar trocando só a implementação dessa interface.
 **Assinatura.** Não há cobrança nesta fase. `Subscription` é criada direto no
 banco pela tela de checkout. O gate de acesso lê esse registro normalmente.
 
+## Deploy
+
+Passo a passo de R2 e Railway em [`docs/deploy.md`](docs/deploy.md), incluindo
+como criar o primeiro professor — num banco novo não existe nenhum, e nenhuma
+tela cria um.
+
 ## Comandos
 
 ```bash
@@ -66,9 +72,33 @@ yarn db:seed          # popula com os dados do protótipo
 yarn db:studio        # inspeciona o banco
 ```
 
+## Storage
+
+Dois buckets no R2, porque os dois tipos de arquivo têm públicos diferentes.
+`R2_MEDIA_BUCKET` é público e guarda foto de perfil — endereço permanente, dá
+para gravar no banco e cachear. `R2_VIDEO_BUCKET` é privado e guarda as aulas,
+que só saem de lá por URL assinada de vida curta. O motivo está comentado no
+topo de `src/lib/r2.ts`; o resumo é que acesso público no R2 é propriedade do
+bucket, não do prefixo, então um bucket só não faz as duas coisas.
+
+Chave de storage nunca vaza para o cliente numa leitura: os DTOs expõem
+`photoUrl` já resolvido por `storageService.resolvePublicUrl`. `photoKey` só
+aparece no payload de escrita.
+
 ## Pendências conhecidas
 
-- `src/index.ts` e `src/lib/auth.ts` têm domínios de outro produto hardcoded no
-  CORS e em `trustedOrigins` (`amfinance.com.br`, `jupter.app`). Trocar pelos do
-  GUARDA e mover para variável de ambiente.
-- `cookiePrefix` em `src/lib/auth.ts` ainda é `am`.
+- Login com Google e recuperação de senha estão **desligados**, e escondidos da
+  tela pelo frontend (`src/lib/auth/features.ts` de lá). Para religar: Google
+  precisa de `GOOGLE_CLIENT_ID`/`SECRET` com a URL desta API como redirect
+  autorizado; recuperação de senha precisa de `sendResetPassword` descomentado
+  aqui e de templates novos — os de `src/lib/resend.ts` são de outro produto,
+  o Jupter, com logo, remetente e assinatura dele.
+- `sameSite` é derivado de `COOKIE_DOMAIN`, não fixo: sem ele o cookie é
+  cross-site e vai de `"none"`; com ele volta a `"lax"`. Preencher essa variável
+  também reativa o redirect do middleware no frontend e a leitura de sessão no
+  servidor, porque o cookie passa a chegar nos dois hosts. Ver
+  [`docs/deploy.md`](docs/deploy.md).
+- Um vídeo enviado numa tela de "nova aula" que o professor abandona antes de
+  salvar fica órfão no bucket. Ninguém limpa.
+- `publicRoutes.INSTRUCTOR_PROFILE` aponta para `/p/<slug>`, que o frontend
+  ainda não implementa.

@@ -39,7 +39,7 @@ export type LessonPlaybackDTO = {
     id: string;
     slug: string;
     displayName: string;
-    photoKey: string | null;
+    photoUrl: string | null;
     lessonCount: number;
     trackCount: number;
     lastPublishedAt: Date | null;
@@ -73,6 +73,29 @@ export type InstructorLessonDTO = {
   track: LessonTrackRefDTO | null;
   /** Students who have progress on this lesson. */
   viewerCount: number;
+};
+
+/**
+ * One lesson as its own screen, for the instructor.
+ *
+ * Carries `trackId` and `moduleId` raw rather than the display-oriented
+ * LessonTrackRefDTO: this feeds two selects that need ids to prefill, and the
+ * "aula 07 de 18" numbering the other DTO computes is meaningless here.
+ */
+export type InstructorLessonDetailDTO = {
+  id: string;
+  title: string;
+  description: string | null;
+  durationSec: number;
+  status: PublishStatus;
+  publishedAt: Date | null;
+  /** Null until a video has been uploaded. */
+  videoKey: string | null;
+  processing: VideoProcessingStatus;
+  trackId: string | null;
+  moduleId: string | null;
+  trackTitle: string | null;
+  moduleTitle: string | null;
 };
 
 export type CreateLessonDTO = {

@@ -29,19 +29,21 @@ export function isAllowedOrigin(origin: string): boolean {
 /**
  * Origins Better Auth will accept redirects and callbacks for.
  *
- * Unlike the CORS check this cannot be a predicate, so development gets an
- * explicit list of the ports Next.js is likely to land on.
+ * Unlike the CORS check this cannot be a predicate, so development uses Better
+ * Auth's port wildcard. An enumerated list was tried first and failed the way
+ * these lists always fail: the frontend landed on a port outside it and login
+ * answered INVALID_ORIGIN, which reads as a broken app rather than a busy port.
  */
 export function trustedOrigins(): string[] {
   const configured = configuredOrigins();
 
   if (process.env.NODE_ENV === "production") return configured;
 
-  const devPorts = [3000, 3001, 3002, 3003];
-  const devOrigins = devPorts.flatMap((port) => [
-    `http://localhost:${port}`,
-    `http://127.0.0.1:${port}`,
-  ]);
-
-  return [...new Set([...configured, ...devOrigins])];
+  return [
+    ...new Set([
+      ...configured,
+      "http://localhost:*",
+      "http://127.0.0.1:*",
+    ]),
+  ];
 }
