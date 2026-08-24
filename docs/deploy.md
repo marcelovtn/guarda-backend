@@ -8,8 +8,10 @@ entender o que existe.
 | O quê | Onde |
 |---|---|
 | Projeto Railway | `guarda` |
-| API | https://api-production-9bec.up.railway.app |
-| Frontend | https://web-production-15d196.up.railway.app |
+| **Frontend** | **https://guardabjj.com.br** |
+| **API** | **https://api.guardabjj.com.br** |
+| DNS | Hostinger (registrador e zona) |
+| Endereços antigos | `*.up.railway.app` continuam de pé, mas sem login: o cookie agora é do domínio próprio |
 | Banco | Postgres da Railway, rede privada (`postgres.railway.internal`) |
 | Conta Cloudflare | `11bfca83f9d25dc976e03a44af06b39e` |
 | Bucket público | `guarda-media` → https://pub-3be089b76d244560a6275b9a01e790e9.r2.dev |
@@ -212,25 +214,41 @@ passa a chegar nos dois hosts: `sameSite` volta para `lax`, o redirect do
 `src/middleware.ts` do frontend volta a funcionar, e `getSession()` no servidor
 volta a resolver sessão.
 
-### 1. DNS pela Cloudflare
+### 1. DNS — a Hostinger dá conta
 
-Registre em [registro.br](https://registro.br) (precisa de CPF ou CNPJ) e
-**mova a zona para a Cloudflare**, trocando os nameservers no Registro.br.
+A Railway só aceita CNAME (a infra tem IP dinâmico, não há registro A), e o
+padrão de DNS proíbe CNAME no apex. Isso costuma empurrar todo mundo para a
+Cloudflare, por causa do *CNAME flattening*.
 
-O motivo é técnico: um apex não pode ser CNAME, e a Railway entrega um alvo
-CNAME. A Cloudflare faz *flattening*, que resolve isso. De quebra, habilita
-domínio customizado no bucket de mídia depois — o `pub-*.r2.dev` atual é
-limitado por taxa e a própria Cloudflare não recomenda para produção.
+**Não foi preciso.** O painel da Hostinger converte sozinho: ao criar um CNAME
+com nome `@`, ele vira um registro **ALIAS**, que é exatamente o equivalente. O
+próprio seletor de tipo diz isso — "Domínios raiz (@) são adicionados como
+registros ALIAS".
 
-### 2. Domínios na Railway
+Fica o registro para quem vier depois: vale olhar o painel antes de acreditar
+em artigo dizendo que tal provedor não suporta apex. A tentativa de criar a
+zona na Cloudflare, aliás, falhava com `Error checking domains` mesmo após a
+propagação — e acabou sendo desnecessária.
 
-| Serviço | Domínio |
-|---|---|
-| `web` | `guardabjj.com.br` |
-| `api` | `api.guardabjj.com.br` |
+### 2. Domínios na Railway e registros no DNS
 
-A Railway dá um alvo CNAME para cada. No DNS da Cloudflare, crie os dois como
-**DNS only** (nuvem cinza) — o proxy laranja atrapalha a emissão do certificado.
+Adicione o domínio a cada serviço (Settings → Networking → Custom Domain,
+porta 8080). A Railway devolve um CNAME e um TXT por domínio. Os quatro que
+estão valendo hoje:
+
+| Tipo | Nome | Valor |
+|---|---|---|
+| CNAME (vira ALIAS) | `@` | `q9uhpwpk.up.railway.app` |
+| TXT | `_railway-verify` | `railway-verify=a4b381…` |
+| CNAME | `api` | `rxvfzg67.up.railway.app` |
+| TXT | `_railway-verify.api` | `railway-verify=0284bf…` |
+
+Apague o registro `A @` do parking da Hostinger antes: ele conflita com o
+ALIAS e o painel recusa a criação em silêncio.
+
+O certificado leva alguns minutos depois do DNS resolver. Enquanto não sai, o
+domínio responde com o certificado `*.up.railway.app` e o browser recusa — é
+espera, não erro.
 
 ### 3. Variáveis
 
