@@ -20,11 +20,11 @@ const prisma = new PrismaClient()
 const SEED_PASSWORD = '12345678'
 
 const INSTRUCTOR = {
-  email: 'rafael@guarda.app',
-  name: 'Rafael Moura',
-  slug: 'rafaelmoura',
+  email: 'jpedrobarbosabjj@gmail.com',
+  name: 'João Pedro',
+  slug: 'joaopedro',
   bio: 'Ensino jiu jitsu há doze anos. Aqui eu subo as aulas na ordem exata que eu ensino no tatame — do fundamento à finalização. Você não escolhe vídeo, você segue a trilha.',
-  monthlyPriceCents: 4990,
+  monthlyPriceCents: 1990,
 }
 
 const STUDENT = { email: 'aluno@guarda.app', name: 'Marcelo Távora' }
@@ -82,6 +82,23 @@ async function main() {
 
   const instructorUser = await upsertUser(INSTRUCTOR.email, INSTRUCTOR.name)
   const studentUser = await upsertUser(STUDENT.email, STUDENT.name)
+
+  // The instructor's login email changed after the first seed run, and both
+  // `userId` and `slug` are unique — so upserting on the new user id would
+  // collide with the profile the old email left behind. Hand that profile over
+  // to the new user and drop the abandoned one (its rows cascade).
+  const previousProfile = await prisma.instructor.findUnique({
+    where: { slug: INSTRUCTOR.slug },
+    select: { id: true, userId: true },
+  })
+
+  if (previousProfile && previousProfile.userId !== instructorUser.id) {
+    await prisma.instructor.update({
+      where: { id: previousProfile.id },
+      data: { userId: instructorUser.id },
+    })
+    await prisma.user.delete({ where: { id: previousProfile.userId } })
+  }
 
   const instructor = await prisma.instructor.upsert({
     where: { userId: instructorUser.id },

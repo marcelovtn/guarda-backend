@@ -45,34 +45,13 @@ export class SubscriptionRepository extends BaseRepository {
   }
 
   /**
-   * Creates or reactivates the subscription.
+   * Flips a pre-billing row to CANCELED.
    *
-   * There is no billing here — the checkout screen writes this row directly.
-   * When a real provider lands, only this method changes; everything that
-   * reads access already reads this table.
+   * Only for subscriptions with no `stripeSubscriptionId` — see
+   * `SubscriptionService.cancel`. Anything Stripe is charging is cancelled
+   * there and written back by the webhook, which is the only writer of a billed
+   * subscription's state.
    */
-  async activate(instructorId: string, monthlyPrice: number, renewsAt: Date) {
-    const studentId = this.getUserId();
-
-    return prisma.subscription.upsert({
-      where: { studentId_instructorId: { studentId, instructorId } },
-      update: {
-        status: "ACTIVE",
-        monthlyPrice,
-        renewsAt,
-        canceledAt: null,
-        deletedAt: null,
-      },
-      create: {
-        studentId,
-        instructorId,
-        status: "ACTIVE",
-        monthlyPrice,
-        renewsAt,
-      },
-    });
-  }
-
   async cancel(instructorId: string) {
     const existing = await this.findExisting(instructorId);
 

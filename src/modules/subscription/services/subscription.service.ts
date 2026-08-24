@@ -1,17 +1,11 @@
 import { HTTPException } from "hono/http-exception";
+import { paymentService } from "../../payment/services/payment.service.js";
 import type { SubscriptionDTO } from "../domains/subscription.types.js";
 import {
   SubscriptionRepository,
   subscriptionRepository,
 } from "../repositories/subscription.repository.js";
 import { storageService } from "../../storage/services/storage.service.js";
-
-/** Billing is not implemented — renewal is simply one month out. */
-function oneMonthFromNow(): Date {
-  const date = new Date();
-  date.setMonth(date.getMonth() + 1);
-  return date;
-}
 
 export class SubscriptionService {
   private readonly repository: SubscriptionRepository;
@@ -69,49 +63,35 @@ export class SubscriptionService {
   }
 
   /**
-   * Subscribes the current student to an instructor.
+   * Cancels access.
    *
-   * No payment is taken. The checkout screen calls this directly and the row
-   * it writes is what every access check reads, so the rest of the app behaves
-   * exactly as it will once billing exists.
+   * Anything with billing attached is cancelled at Stripe and nothing is
+   * written here — the row changes when the webhook arrives. Doing both would
+   * revoke access while the card kept being charged.
+   *
+   * Rows with no `stripeSubscriptionId` predate billing (the seed, and the old
+   * checkout that granted access directly). Nothing is charging them, so they
+   * are still flipped locally.
+   *
+   * The row is kept as CANCELED rather than deleted, so the student's progress
+   * survives if they come back.
    */
-  async subscribe(instructorSlug: string): Promise<SubscriptionDTO> {
+  async cancel(instructorSlug: string) {
     const instructor =
       await this.repository.findPublishedInstructorBySlug(instructorSlug);
 
     const existing = await this.repository.findExisting(instructor.id);
 
-    if (existing?.status === "ACTIVE" && !existing.deletedAt) {
-      throw new HTTPException(409, {
-        message: "Você já assina esse professor",
-      });
+    if (!existing || existing.status === "CANCELED" || existing.deletedAt) {
+      throw new HTTPException(404, { message: "Assinatura não encontrada" });
     }
 
-    await this.repository.activate(
-      instructor.id,
-      instructor.monthlyPrice,
-      oneMonthFromNow(),
-    );
-
-    const subscriptions = await this.listForCurrentStudent();
-    const created = subscriptions.find(
-      (s) => s.instructor.id === instructor.id,
-    );
-
-    if (!created) {
-      throw new HTTPException(500, { message: "Falha ao criar a assinatura" });
+    if (existing.stripeSubscriptionId) {
+      await paymentService.cancelStripeSubscription(
+        existing.stripeSubscriptionId,
+      );
+      return;
     }
-
-    return created;
-  }
-
-  /**
-   * Cancels access. The row is kept with status CANCELED rather than deleted,
-   * so the student's progress survives if they come back.
-   */
-  async cancel(instructorSlug: string) {
-    const instructor =
-      await this.repository.findPublishedInstructorBySlug(instructorSlug);
 
     return this.repository.cancel(instructor.id);
   }

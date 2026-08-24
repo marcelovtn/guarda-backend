@@ -32,6 +32,7 @@ model User {
   instructor          Instructor?
   subscriptions       Subscription[]
   lessonProgress      LessonProgress[]
+  billingProfile      BillingProfile?
 
   @@map("user")
 }
@@ -156,22 +157,29 @@ enum SubscriptionStatus {
 /// A user who publishes content. The row existing is what makes someone an
 /// instructor — there is no role flag to keep in sync.
 model Instructor {
-  id           String    @id @default(dbgenerated("gen_random_uuid()"))
-  createdAt    DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
-  userId       String    @unique @map("user_id")
+  id              String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  userId          String    @unique @map("user_id")
   /// Public profile URL segment: /p/<slug>
-  slug         String    @unique
-  displayName  String    @map("display_name")
+  slug            String    @unique
+  displayName     String    @map("display_name")
   /// Free-form text the instructor writes about themselves. The only thing a
   /// student reads before subscribing.
-  bio          String?
+  bio             String?
   /// Storage key of the profile photo, resolved through the storage module.
-  photoKey     String?   @map("photo_key")
+  photoKey        String?   @map("photo_key")
   /// Monthly price in cents, to avoid float rounding.
-  monthlyPrice Int       @default(0) @map("monthly_price")
-  published    Boolean   @default(false)
+  monthlyPrice    Int       @default(0) @map("monthly_price")
+  published       Boolean   @default(false)
+  /// Stripe Product (`prod_…`) — one per instructor, because a Checkout line
+  /// item shows the Product name and every instructor is a distinct plan.
+  stripeProductId String?   @unique @map("stripe_product_id")
+  /// The Stripe Price (`price_…`) matching monthlyPrice. Prices are immutable,
+  /// so changing monthlyPrice creates a new one and repoints this column;
+  /// students already subscribed stay on the price they signed up for.
+  stripePriceId   String?   @map("stripe_price_id")
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   tracks        Track[]
@@ -259,20 +267,28 @@ model Lesson {
   @@map("lesson")
 }
 
-/// A student's access to one instructor. Billing is out of scope for now — the
-/// checkout screen writes this row directly and the access gate reads it.
+/// A student's access to one instructor.
+///
+/// Stripe owns the truth about whether the money arrived; this row is the local
+/// projection of it and is what every access check reads. Only the webhook
+/// writes it — see `modules/payment`. Rows with a null stripeSubscriptionId are
+/// from before billing existed (the seed, and the manual checkout that used to
+/// grant access directly).
 model Subscription {
-  id           String             @id @default(dbgenerated("gen_random_uuid()"))
-  createdAt    DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt    DateTime?          @map("deleted_at") @db.Timestamptz(6)
-  studentId    String             @map("student_id")
-  instructorId String             @map("instructor_id")
-  status       SubscriptionStatus @default(ACTIVE)
+  id                   String             @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt            DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt            DateTime?          @map("deleted_at") @db.Timestamptz(6)
+  studentId            String             @map("student_id")
+  instructorId         String             @map("instructor_id")
+  status               SubscriptionStatus @default(ACTIVE)
   /// Price in cents at the time of subscribing.
-  monthlyPrice Int                @map("monthly_price")
-  renewsAt     DateTime?          @map("renews_at") @db.Timestamptz(6)
-  canceledAt   DateTime?          @map("canceled_at") @db.Timestamptz(6)
+  monthlyPrice         Int                @map("monthly_price")
+  renewsAt             DateTime?          @map("renews_at") @db.Timestamptz(6)
+  canceledAt           DateTime?          @map("canceled_at") @db.Timestamptz(6)
+  /// Stripe Subscription (`sub_…`). Unique, which is what makes the webhook
+  /// idempotent: a redelivered event lands on the same row.
+  stripeSubscriptionId String?            @unique @map("stripe_subscription_id")
 
   student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   instructor Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
@@ -301,4 +317,26 @@ model LessonProgress {
   @@unique([studentId, lessonId])
   @@index([studentId, updatedAt])
   @@map("lesson_progress")
+}
+
+/// The student's identity at the payment provider.
+///
+/// Its own table rather than a column on User: User belongs to Better Auth and
+/// comes from the `upstream` base repo, so keeping it untouched avoids a
+/// conflict on every `git fetch upstream`. One row per user, created lazily the
+/// first time they open checkout.
+model BillingProfile {
+  id               String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt        DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
+  userId           String    @unique @map("user_id")
+  /// Stripe Customer id (`cus_…`). Reused across checkouts so one student is
+  /// one customer, which is also what the billing portal is keyed on.
+  stripeCustomerId String    @unique @map("stripe_customer_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deletedAt])
+  @@map("billing_profile")
 }

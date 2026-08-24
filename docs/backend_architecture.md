@@ -32,6 +32,7 @@ src/
 │   ├── auth.ts                  # Configuração completa do Better Auth
 │   ├── prisma.ts                # Instância singleton do Prisma Client
 │   ├── resend.ts                # Instância do Resend (email)
+│   ├── stripe.ts                # Cliente Stripe — só o módulo payment importa
 │   └── migration.ts             # Utilitário de migração
 │
 ├── middlewares/
@@ -43,6 +44,7 @@ src/
 │   │   └── repositories/
 │   │       └── base.repository.ts  # Classe base com helpers para autenticação
 │   ├── auth/                    # Endpoints customizados de auth (check-email, etc.)
+│   ├── payment/                 # Stripe: checkout, portal e webhook
 │   ├── userData/                # Operações de conta do usuário (delete, etc.)
 │   ├── userFirstTimeSetup/      # Onboarding de novos usuários
 │   └── userInfo/                # Dados de perfil do usuário (language, etc.)
@@ -282,8 +284,38 @@ Para adicionar um novo modelo:
 | `RESEND_API_KEY` | Email | Chave da API do Resend |
 | `GOD_USERS` | Admin | IDs separados por vírgula com acesso admin |
 | `PORT` | Não | Porta do servidor (padrão: 3001) |
+| `STRIPE_SECRET_KEY` | Cobrança | Chave restrita (`rk_…`) da Stripe |
+| `STRIPE_WEBHOOK_SECRET` | Cobrança | Signing secret do endpoint de webhook (`whsec_…`) |
+| `FRONTEND_URL` | Cobrança | URL absoluta do front, para o retorno do checkout |
 
 ---
+
+## Cobrança
+
+O aluno paga na Stripe, não aqui. O fluxo tem exatamente dois lados:
+
+```
+POST /api/payment/checkout-session  →  Stripe Checkout  →  cartão do aluno
+                                                              │
+POST /api/payment/webhook  ←  evento assinado  ←──────────────┘
+        │
+        └── grava Subscription (único escritor)
+```
+
+Três regras que o código depende:
+
+1. **O webhook é o único escritor de `Subscription`.** A tela de sucesso não
+   libera nada — ela espera. Um aluno pode fechar a aba antes dela carregar, ou
+   abrir aquela URL na mão.
+2. **A assinatura da requisição é verificada antes de qualquer coisa.** Um corpo
+   não verificado é um request anônimo que libera o catálogo inteiro.
+3. **Cada evento relê a subscription na Stripe** em vez de confiar no payload.
+   A Stripe não promete ordem de entrega, e reler torna evento reentregue ou
+   fora de ordem inofensivo.
+
+Localmente, os eventos chegam por `stripe listen --forward-to
+localhost:3001/api/payment/webhook`, que imprime o `STRIPE_WEBHOOK_SECRET` a
+usar no `.env`.
 
 ## Como criar um novo módulo
 

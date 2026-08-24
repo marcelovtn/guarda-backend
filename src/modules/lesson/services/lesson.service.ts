@@ -1,10 +1,8 @@
 import type { PublishStatus, TrackCategory } from "@prisma/client";
 import { HTTPException } from "hono/http-exception";
 import { prisma } from "../../../lib/prisma.js";
-import { logger } from "../../../utils/logger.js";
 import { videoProvider } from "../../../lib/videoProvider.js";
 import { instructorRepository } from "../../instructor/repositories/instructor.repository.js";
-import { storageService } from "../../storage/services/storage.service.js";
 import type {
   CreateLessonDTO,
   InstructorLessonDetailDTO,
@@ -105,7 +103,7 @@ export class LessonService {
         id: lesson.instructor.id,
         slug: lesson.instructor.slug,
         displayName: lesson.instructor.displayName,
-        photoUrl: storageService.resolvePublicUrl(lesson.instructor.photoKey),
+        photoKey: lesson.instructor.photoKey,
         lessonCount: stats.lessonCount,
         trackCount: stats.trackCount,
         lastPublishedAt: stats.lastPublishedAt,
@@ -150,8 +148,15 @@ export class LessonService {
     }));
   }
 
-  async getForInstructor(lessonId: string): Promise<InstructorLessonDetailDTO> {
+  async getForInstructor(
+    lessonId: string,
+  ): Promise<InstructorLessonDetailDTO> {
     const lesson = await this.repository.findOwned(lessonId);
+
+    const [positions, viewers] = await Promise.all([
+      this.buildTrackPositions([lesson]),
+      this.repository.countViewers([lesson.id]),
+    ]);
 
     return {
       id: lesson.id,
@@ -160,12 +165,15 @@ export class LessonService {
       durationSec: lesson.durationSec,
       status: lesson.status,
       publishedAt: lesson.publishedAt,
-      videoKey: lesson.videoKey,
-      processing: await videoProvider.getProcessingStatus(lesson.videoKey ?? ""),
-      trackId: lesson.module?.trackId ?? null,
-      moduleId: lesson.moduleId,
-      trackTitle: lesson.module?.track.title ?? null,
-      moduleTitle: lesson.module?.title ?? null,
+      hasVideo: Boolean(lesson.videoKey),
+      videoUrl: lesson.videoKey
+        ? await videoProvider.getPlaybackUrl(lesson.videoKey)
+        : null,
+      processing: await videoProvider.getProcessingStatus(
+        lesson.videoKey ?? "",
+      ),
+      track: this.buildTrackRef(lesson, positions),
+      viewerCount: viewers.get(lesson.id) ?? 0,
     };
   }
 
@@ -225,30 +233,7 @@ export class LessonService {
       videoKey: data.videoKey ?? current.videoKey,
     });
 
-    // Trocar o vídeo deixa o arquivo antigo sem nenhum caminho de volta para o
-    // produto — ninguém consegue assistir e ninguém consegue apagar pela tela.
-    const replaced =
-      data.videoKey !== undefined &&
-      current.videoKey !== null &&
-      data.videoKey !== current.videoKey
-        ? current.videoKey
-        : null;
-
-    const updated = await this.repository.update(lessonId, { ...data, title });
-
-    if (replaced) {
-      // Best-effort de propósito: a aula já foi salva e o vídeo novo já está
-      // no lugar. Falhar aqui deixa um objeto órfão no bucket, o que é bem
-      // menos grave do que devolver erro para um update que deu certo.
-      await videoProvider.remove(replaced).catch((error: unknown) => {
-        logger.warn(
-          { lessonId, videoKey: replaced, error },
-          "falha ao remover o vídeo substituído",
-        );
-      });
-    }
-
-    return updated;
+    return this.repository.update(lessonId, { ...data, title });
   }
 
   async remove(lessonId: string) {

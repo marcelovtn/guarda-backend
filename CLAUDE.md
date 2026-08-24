@@ -54,8 +54,16 @@ R2 a partir de um service. A implementação atual é mínima; o pipeline real
 (transcodificação, HLS, status de processamento) é responsabilidade de outra
 pessoa e vai entrar trocando só a implementação dessa interface.
 
-**Assinatura.** Não há cobrança nesta fase. `Subscription` é criada direto no
-banco pela tela de checkout. O gate de acesso lê esse registro normalmente.
+**Assinatura e cobrança.** A cobrança é Stripe Checkout em `modules/payment`.
+`Subscription` é a projeção local do que a Stripe diz, e **só o webhook escreve
+essa tabela** — não existe endpoint que crie assinatura, porque um endpoint
+assim é um jeito de assinar sem pagar. Cancelamento é feito na Stripe e volta
+pelo webhook; cancelar só localmente tira o acesso do aluno e mantém o cartão
+sendo cobrado. Linhas com `stripeSubscriptionId` nulo são de antes da cobrança
+(o seed) e essas sim são canceladas localmente.
+
+Só `modules/payment` importa `lib/stripe.ts`. Um service que fala com a Stripe
+por fora dele é um service que pode liberar acesso sem o dinheiro ter entrado.
 
 ## Deploy
 
