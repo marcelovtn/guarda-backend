@@ -191,6 +191,23 @@ lá é compilado, e o `tsx` é devDependency. Em produção roda assim:
 railway ssh -s api node dist/scripts/seed.js
 ```
 
+#### Rodando comando avulso via `railway ssh`
+
+`railway ssh` quebra os argumentos nos espaços e depois junta tudo de volta num
+`sh` — então as aspas do seu shell local somem no caminho e o `sh` do container
+recebe parênteses soltos (`sh: syntax error: unexpected "("`). Para um script
+avulso, mande em base64, que não tem espaço nenhum, e escape as aspas para elas
+sobreviverem até lá:
+
+```bash
+B64=$(base64 < script.js | tr -d '\n')
+railway ssh -s api "node -e \"eval(Buffer.from('$B64','base64').toString())\""
+```
+
+Pelo mesmo motivo, scripts que recebem argumentos com espaço (`--name "João
+Pedro"`) precisam consumir os pedaços até o próximo `--`, como faz o
+`provisionInstructor`.
+
 O procedimento:
 
 1. Todos os envolvidos se cadastram normalmente pela tela de criar conta —
