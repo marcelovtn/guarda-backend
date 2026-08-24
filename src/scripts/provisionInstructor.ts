@@ -14,6 +14,15 @@
  * Idempotent: keyed on the e-mail, so re-running updates the same instructor
  * rather than creating a second one.
  *
+ * Em produção, rode DENTRO do serviço — o Postgres da Railway só existe na
+ * rede privada dela, e este script mora em src/ justamente para compilar junto
+ * na imagem (o `tsx` não vai para produção):
+ *
+ *   railway ssh -s api node dist/scripts/provisionInstructor.js \
+ *     --email joao@exemplo.com --name "João Pedro" --slug joaopedro --price 19,90
+ *
+ * Localmente, contra o banco de desenvolvimento:
+ *
  *   yarn instructor:create --email joao@exemplo.com --name "João Pedro" \
  *     --slug joaopedro --price 19,90 [--bio "..."] [--password ...] [--draft]
  *
@@ -23,7 +32,7 @@
 import "dotenv/config";
 import bcrypt from "bcrypt";
 import { randomBytes, randomUUID } from "node:crypto";
-import { prisma } from "../src/lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 
 function arg(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`);

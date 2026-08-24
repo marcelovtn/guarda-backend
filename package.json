@@ -10,7 +10,7 @@
     "db:generate": "npx prisma generate",
     "db:studio": "npx prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "instructor:create": "tsx prisma/provision-instructor.ts",
+    "instructor:create": "tsx src/scripts/provisionInstructor.ts",
     "postinstall": "npx prisma generate",
     "bootstrap:instructor": "tsx src/scripts/bootstrapInstructor.ts",
     "change:email": "tsx src/scripts/changeUserEmail.ts"
