@@ -3,7 +3,12 @@
  * against: one instructor, nine tracks, 133 lessons, two lessons with no track,
  * and one student partway through the passing track.
  *
- * Idempotent — safe to run repeatedly. Run with `yarn db:seed`.
+ * Idempotent — safe to run repeatedly. Run with `yarn db:seed` locally, or
+ * `node dist/scripts/seed.js` inside the container that has DATABASE_URL.
+ *
+ * Lives under src/ so `tsc` compiles it into dist/ — prisma/ is copied into the
+ * production image but nothing there is compiled, and tsx is a devDependency,
+ * so a seed left in prisma/ simply cannot run anywhere but a dev machine.
  */
 import { PrismaClient, PublishStatus } from '@prisma/client'
 import bcrypt from 'bcrypt'
@@ -13,9 +18,10 @@ import { ORPHAN_LESSONS, TRACKS } from './data/tracks.js'
 const prisma = new PrismaClient()
 
 /**
- * Password for both seeded accounts. Development only — these users exist so
- * the app can be opened and clicked through, and they are never created
- * anywhere but a local database.
+ * Password for both seeded accounts. This is a weak, published password: any
+ * database this seed touches has two accounts anyone can sign into. It was run
+ * against production once, deliberately, to fill the catalogue — see
+ * docs/deploy.md. Change these passwords before the platform takes real money.
  */
 const SEED_PASSWORD = '12345678'
 

@@ -164,8 +164,32 @@ Num banco novo não existe nenhum professor, e sem professor toda a área
 `Instructor` para o `user_id` dele, e não há tela que crie uma. Quem cria é
 `POST /api/admin/instructors`, protegido por `GOD_USERS`.
 
-**Não rode `yarn db:seed` em produção** para contornar: ele cria um professor
-fictício (Rafael Moura) com 135 aulas de exemplo.
+### Sobre o seed
+
+O seed (`src/scripts/seed.ts`) **foi rodado em produção**, deliberadamente, em
+24/08/2026, para encher o catálogo do João Pedro antes de entregar a plataforma
+pra ele testar. Saiba o que ele faz antes de rodar de novo:
+
+- Faz upsert em `jpedrobarbosabjj@gmail.com` e **grava a senha `12345678`** —
+  a conta real do João. Rodar o seed reseta a senha dele.
+- Cria `aluno@guarda.app` (mesma senha) com **assinatura `ACTIVE` que nunca
+  passou pelo Stripe**.
+- Cria 9 trilhas e 133 aulas **sem `videoKey`** — o catálogo aparece cheio, mas
+  nenhuma aula toca.
+- Apaga trilhas e aulas do professor `joaopedro` antes de recriar. É escopado
+  por `instructorId`, então não encosta em outros professores — mas leva junto
+  qualquer conteúdo real que o João já tenha subido.
+
+Ou seja: **depois que o João subir aula de verdade, rodar o seed apaga.** Faça
+backup antes (`pg_dump` pelo serviço Postgres) e troque as duas senhas antes de
+a plataforma receber dinheiro de verdade.
+
+Ele mora em `src/` porque `prisma/` é copiado pra imagem de produção mas nada
+lá é compilado, e o `tsx` é devDependency. Em produção roda assim:
+
+```bash
+railway ssh -s api node dist/scripts/seed.js
+```
 
 O procedimento:
 
