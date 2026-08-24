@@ -25,6 +25,35 @@ export class InstructorRepository extends BaseRepository {
     return this.findByUserId(this.getUserId());
   }
 
+  /** Conta pela qual o admin identifica quem promover. */
+  async findUserByEmail(email: string) {
+    return prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true },
+    });
+  }
+
+  /** Checa se o slug já está tomado, incluindo por professor não publicado. */
+  async findBySlug(slug: string) {
+    return prisma.instructor.findFirst({
+      where: { slug, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
+  async createForUser(
+    userId: string,
+    data: {
+      slug: string;
+      displayName: string;
+      bio: string | null;
+      monthlyPrice: number;
+      published: boolean;
+    },
+  ) {
+    return prisma.instructor.create({ data: { userId, ...data } });
+  }
+
   async update(instructorId: string, data: UpdateInstructorProfileDTO) {
     return prisma.instructor.update({
       where: { id: instructorId },

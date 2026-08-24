@@ -20,6 +20,7 @@ import { auth } from "./lib/auth.js";
 import { authContextMiddleware } from "./middlewares/authContext.js";
 import { authController } from "./modules/auth/controllers/auth.controller.js";
 import {
+  adminInstructorController,
   instructorController,
   instructorProfileController,
   instructorStudentsController,
@@ -100,6 +101,9 @@ hono.route("/api/subscriptions", subscriptionController);
 // Billing. /api/payment/webhook is called by Stripe, not by the app.
 hono.route("/api/payment", paymentController);
 hono.route("/api/platform", platformController);
+
+// Promover alguém a professor. GOD_USERS decide quem pode chamar.
+hono.route("/api/admin/instructors", adminInstructorController);
 
 serve(
   {

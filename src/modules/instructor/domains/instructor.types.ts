@@ -4,7 +4,8 @@ export type PublicInstructorDTO = {
   slug: string;
   displayName: string;
   bio: string | null;
-  photoKey: string | null;
+  /** Endereço pronto para o `<img>`. Null quando não há foto. */
+  photoUrl: string | null;
   /** Cents. */
   monthlyPrice: number;
   stats: InstructorStatsDTO;
@@ -28,6 +29,24 @@ export type InstructorStatsDTO = {
 /** The instructor's own editable profile. */
 export type InstructorProfileDTO = PublicInstructorDTO & {
   published: boolean;
+};
+
+/**
+ * Promove uma conta existente a professor. Só admin.
+ *
+ * Identifica por e-mail porque quem chama está olhando uma pessoa, não um
+ * UUID: o fluxo real é "o Marcelo se cadastrou, me dá acesso de professor".
+ */
+export type CreateInstructorDTO = {
+  /** E-mail de uma conta que já existe. */
+  email: string;
+  /** Segmento público da URL: /p/<slug>. */
+  slug: string;
+  displayName: string;
+  bio?: string | null;
+  /** Cents. */
+  monthlyPrice?: number;
+  published?: boolean;
 };
 
 export type UpdateInstructorProfileDTO = {

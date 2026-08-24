@@ -85,7 +85,7 @@ model Verification {
 model UserInfo {
   id                  String    @id @default(dbgenerated("gen_random_uuid()"))
   createdAt           DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
   userId              String?   @unique @map("user_id")
   language            String?   @default("pt")
@@ -159,7 +159,7 @@ enum SubscriptionStatus {
 model Instructor {
   id              String    @id @default(dbgenerated("gen_random_uuid()"))
   createdAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
   userId          String    @unique @map("user_id")
   /// Public profile URL segment: /p/<slug>
@@ -194,7 +194,7 @@ model Instructor {
 model Track {
   id           String        @id @default(dbgenerated("gen_random_uuid()"))
   createdAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
   instructorId String        @map("instructor_id")
   title        String
@@ -220,7 +220,7 @@ model Track {
 model Module {
   id        String    @id @default(dbgenerated("gen_random_uuid()"))
   createdAt DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   trackId   String    @map("track_id")
   title     String
@@ -243,7 +243,7 @@ model Module {
 model Lesson {
   id           String        @id @default(dbgenerated("gen_random_uuid()"))
   createdAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt    DateTime?     @map("deleted_at") @db.Timestamptz(6)
   instructorId String        @map("instructor_id")
   moduleId     String?       @map("module_id")
@@ -277,7 +277,7 @@ model Lesson {
 model Subscription {
   id                   String             @id @default(dbgenerated("gen_random_uuid()"))
   createdAt            DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt            DateTime?          @map("deleted_at") @db.Timestamptz(6)
   studentId            String             @map("student_id")
   instructorId         String             @map("instructor_id")
@@ -304,7 +304,7 @@ model Subscription {
 model LessonProgress {
   id              String    @id @default(dbgenerated("gen_random_uuid()"))
   createdAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   studentId       String    @map("student_id")
   lessonId        String    @map("lesson_id")
   completed       Boolean   @default(false)
@@ -328,7 +328,7 @@ model LessonProgress {
 model BillingProfile {
   id               String    @id @default(dbgenerated("gen_random_uuid()"))
   createdAt        DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
   userId           String    @unique @map("user_id")
   /// Stripe Customer id (`cus_…`). Reused across checkouts so one student is

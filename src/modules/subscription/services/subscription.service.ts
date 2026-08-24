@@ -5,6 +5,7 @@ import {
   SubscriptionRepository,
   subscriptionRepository,
 } from "../repositories/subscription.repository.js";
+import { storageService } from "../../storage/services/storage.service.js";
 
 export class SubscriptionService {
   private readonly repository: SubscriptionRepository;
@@ -42,7 +43,9 @@ export class SubscriptionService {
           id: subscription.instructor.id,
           slug: subscription.instructor.slug,
           displayName: subscription.instructor.displayName,
-          photoKey: subscription.instructor.photoKey,
+          photoUrl: storageService.resolvePublicUrl(
+            subscription.instructor.photoKey,
+          ),
           trackCount: content.tracks.get(subscription.instructorId) ?? 0,
           lessonCount: content.lessons.get(subscription.instructorId) ?? 0,
           lastPublishedAt: content.latest.get(subscription.instructorId) ?? null,

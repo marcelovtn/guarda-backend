@@ -1,5 +1,7 @@
 import { HTTPException } from "hono/http-exception";
+import type { BucketKind } from "../../../lib/r2.js";
 import {
+  buildPublicUrl,
   deleteFromR2,
   getPresignedUploadUrl,
   uploadToR2,
@@ -20,6 +22,8 @@ type AssetPolicy = {
   accepted: string;
   /** Whether the file may be proxied through the backend (see uploadFile). */
   allowProxiedUpload: boolean;
+  /** Which bucket the asset belongs in — public for media, private for video. */
+  bucket: BucketKind;
 };
 
 const ASSET_POLICIES: Record<AssetKind, AssetPolicy> = {
@@ -35,6 +39,9 @@ const ASSET_POLICIES: Record<AssetKind, AssetPolicy> = {
     presignExpiresIn: 300, // 5 min
     accepted: "JPEG, PNG, WebP ou HEIC",
     allowProxiedUpload: true,
+    // Uma foto de perfil não é conteúdo pago: vai no bucket público para ter
+    // endereço permanente e ser cacheada pelo browser.
+    bucket: "media",
   },
   video: {
     mimeTypes: new Set([
@@ -53,6 +60,8 @@ const ASSET_POLICIES: Record<AssetKind, AssetPolicy> = {
     // Never buffer a lesson video in backend memory — presign and let the
     // browser talk to R2 directly.
     allowProxiedUpload: false,
+    // A aula é o produto pago. Bucket privado, leitura só por URL assinada.
+    bucket: "video",
   },
 };
 
@@ -136,9 +145,9 @@ export class StorageService {
     });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const url = await uploadToR2(key, buffer, file.type);
+    await uploadToR2(policy.bucket, key, buffer, file.type);
 
-    return { url, key };
+    return { url: buildPublicUrl(key), key };
   }
 
   /**
@@ -151,7 +160,7 @@ export class StorageService {
     contentType: string,
     folder = "uploads",
     kind: AssetKind = "image",
-  ): Promise<{ presignedUrl: string; publicUrl: string; key: string }> {
+  ): Promise<{ presignedUrl: string; publicUrl: string | null; key: string }> {
     const policy = assertAllowed(kind, contentType);
 
     const key = buildStorageKey({
@@ -160,16 +169,35 @@ export class StorageService {
       uuid: crypto.randomUUID(),
     });
 
-    const { presignedUrl, publicUrl } = await getPresignedUploadUrl(
+    const presignedUrl = await getPresignedUploadUrl(
+      policy.bucket,
       key,
       contentType,
       policy.presignExpiresIn,
     );
-    return { presignedUrl, publicUrl, key };
+
+    return {
+      presignedUrl,
+      key,
+      // Só o bucket público tem endereço permanente. Para vídeo isto é null de
+      // propósito — quem lê uma aula pede a URL assinada ao VideoProvider.
+      publicUrl: policy.bucket === "media" ? buildPublicUrl(key) : null,
+    };
   }
 
-  async deleteFile(key: string): Promise<void> {
-    await deleteFromR2(key);
+  /**
+   * Endereço público de um objeto do bucket de mídia.
+   *
+   * É por aqui que um `photoKey` guardado no banco vira algo que um `<img>`
+   * consegue carregar. Devolve null quando não há foto, para o chamador não
+   * precisar repetir essa checagem.
+   */
+  resolvePublicUrl(key: string | null | undefined): string | null {
+    return key ? buildPublicUrl(key) : null;
+  }
+
+  async deleteFile(key: string, kind: AssetKind = "image"): Promise<void> {
+    await deleteFromR2(ASSET_POLICIES[kind].bucket, key);
   }
 }
 

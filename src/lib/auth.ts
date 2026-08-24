@@ -5,6 +5,25 @@ import { Pool } from "pg";
 import { trustedOrigins } from "./allowedOrigins.js";
 const isProduction = process.env.NODE_ENV === "production";
 
+/**
+ * Frontend e API compartilham domínio de cookie?
+ *
+ * É isso que decide `sameSite`, e não uma preferência. Com um apex em comum
+ * (`guardabjj.com.br` e `api.guardabjj.com.br`, com COOKIE_DOMAIN preenchido) a
+ * requisição é same-site e "lax" basta — que é o valor mais seguro, e o que
+ * volta a fazer o middleware do Next e a leitura de sessão no servidor
+ * funcionarem, porque o cookie passa a chegar nos dois hosts.
+ *
+ * Sem COOKIE_DOMAIN, os dois lados estão em hosts sem apex compartilhado — o
+ * caso de `*.up.railway.app`, que está na Public Suffix List — e "lax" faria o
+ * browser descartar o cookie na chamada do frontend. Aí "none" é o que resta.
+ *
+ * Derivar em vez de fixar: no dia que o domínio entrar, é variável de ambiente,
+ * não deploy de código.
+ */
+const sharesCookieDomain = Boolean(process.env.COOKIE_DOMAIN);
+const crossSiteCookies = isProduction && !sharesCookieDomain;
+
 const poolConfig = {
   max: parseInt(process.env.DB_POOL_MAX || "5", 10),
   min: parseInt(process.env.DB_POOL_MIN || "0", 10),
@@ -28,11 +47,11 @@ export const auth = betterAuth({
   advanced: {
     cookiePrefix: "guarda",
     crossSubDomainCookies: {
-      enabled: isProduction && Boolean(process.env.COOKIE_DOMAIN),
+      enabled: isProduction && sharesCookieDomain,
       domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
     },
     defaultCookieAttributes: {
-      sameSite: "lax",
+      sameSite: crossSiteCookies ? "none" : "lax",
       secure: isProduction,
       httpOnly: true,
       path: "/",
@@ -40,7 +59,7 @@ export const auth = betterAuth({
     cookies: {
       state: {
         attributes: {
-          sameSite: isProduction ? "none" : "lax",
+          sameSite: crossSiteCookies ? "none" : "lax",
           secure: isProduction,
         },
       },
