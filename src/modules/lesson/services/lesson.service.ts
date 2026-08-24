@@ -1,6 +1,7 @@
 import type { PublishStatus, TrackCategory } from "@prisma/client";
 import { HTTPException } from "hono/http-exception";
 import { prisma } from "../../../lib/prisma.js";
+import { logger } from "../../../utils/logger.js";
 import { videoProvider } from "../../../lib/videoProvider.js";
 import { instructorRepository } from "../../instructor/repositories/instructor.repository.js";
 import type {
@@ -233,7 +234,30 @@ export class LessonService {
       videoKey: data.videoKey ?? current.videoKey,
     });
 
-    return this.repository.update(lessonId, { ...data, title });
+    // Trocar o vídeo deixa o arquivo antigo sem nenhum caminho de volta para o
+    // produto — ninguém consegue assistir e ninguém consegue apagar pela tela.
+    const replaced =
+      data.videoKey !== undefined &&
+      current.videoKey !== null &&
+      data.videoKey !== current.videoKey
+        ? current.videoKey
+        : null;
+
+    const updated = await this.repository.update(lessonId, { ...data, title });
+
+    if (replaced) {
+      // Best-effort de propósito: a aula já foi salva e o vídeo novo já está
+      // no lugar. Falhar aqui deixa um objeto órfão no bucket, o que é bem
+      // menos grave do que devolver erro para um update que deu certo.
+      await videoProvider.remove(replaced).catch((error: unknown) => {
+        logger.warn(
+          { lessonId, videoKey: replaced, error },
+          "falha ao remover o vídeo substituído",
+        );
+      });
+    }
+
+    return updated;
   }
 
   async remove(lessonId: string) {
