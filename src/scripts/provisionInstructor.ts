@@ -34,9 +34,27 @@ import bcrypt from "bcrypt";
 import { randomBytes, randomUUID } from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 
+/**
+ * Lê uma flag, juntando tudo até a próxima flag.
+ *
+ * `railway ssh` junta o comando e o re-divide por espaço, então as aspas de
+ * --name "João Pedro" não sobrevivem à viagem: o valor chega partido e a
+ * segunda palavra some sem aviso — o professor vira "João". Consumir até a
+ * próxima `--` remonta o valor, e não muda nada para quem roda local com
+ * aspas de verdade.
+ */
 function arg(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`);
-  return index === -1 ? undefined : process.argv[index + 1];
+  if (index === -1) return undefined;
+
+  const parts: string[] = [];
+  for (let i = index + 1; i < process.argv.length; i++) {
+    const value = process.argv[i]!;
+    if (value.startsWith("--")) break;
+    parts.push(value);
+  }
+
+  return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
 function fail(message: string): never {
